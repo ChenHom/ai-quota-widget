@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-16T09:30:00Z",
+  "providers": {
+    "codex": {
+      "provider": "codex",
+      "status": "rate_limited",
+      "lastSuccessAt": "2026-07-16T09:10:00Z",
+      "windows": {
+        "five_hour": {
+          "remainingPercent": 0.0,
+          "resetsAt": "2026-07-16T10:00:00Z"
+        },
+        "seven_day": {
+          "remainingPercent": 12.0,
+          "resetsAt": null
+        }
+      }
+    },
+    "claude": {
+      "provider": "claude",
+      "status": "error",
+      "lastSuccessAt": "2026-07-16T08:30:00Z",
+      "windows": {
+        "five_hour": {
+          "remainingPercent": 50.0,
+          "resetsAt": "2026-07-16T11:00:00Z"
+        },
+        "seven_day": {
+          "remainingPercent": 60.0,
+          "resetsAt": null
+        }
+      }
+    },
+    "agy": {
+      "provider": "agy",
+      "status": "ok",
+      "lastSuccessAt": "2026-07-16T09:28:10Z",
+      "windows": {
+        "five_hour": {
+          "remainingPercent": 41.0,
+          "resetsAt": "2026-07-16T14:00:00Z"
+        },
+        "seven_day": null
+      }
+    }
+  }
+}

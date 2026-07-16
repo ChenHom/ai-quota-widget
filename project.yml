@@ -1,0 +1,58 @@
+name: AIQuota
+options:
+  bundleIdPrefix: com.hom
+targets:
+  AIQuota:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: AIQuotaApp
+      - path: Shared
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.hom.AIQuota
+      CODE_SIGN_ENTITLEMENTS: AIQuotaApp/AIQuota.entitlements
+      GENERATE_INFOPLIST_FILE: true
+      MARKETING_VERSION: "1.0"
+      CURRENT_PROJECT_VERSION: "1"
+      INFOPLIST_KEY_UILaunchScreen: {}
+      INFOPLIST_KEY_CFBundleURLTypes:
+        - CFBundleURLSchemes:
+            - aiquota
+          CFBundleURLName: com.hom.AIQuota
+      INFOPLIST_KEY_NSLocalNetworkUsageDescription: "此 App 需要存取區域網路以取得 AI Quota Collector 產生的額度資料。"
+    dependencies:
+      - target: AIQuotaWidget
+
+  AIQuotaWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: AIQuotaWidgetExtension
+      - path: Shared
+    info:
+      path: AIQuotaWidgetExtension/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.hom.AIQuota.WidgetExtension
+      CODE_SIGN_ENTITLEMENTS: AIQuotaWidgetExtension/AIQuotaWidget.entitlements
+      GENERATE_INFOPLIST_FILE: false
+      MARKETING_VERSION: "1.0"
+      CURRENT_PROJECT_VERSION: "1"
+
+  AIQuotaTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: AIQuotaTests
+      - path: Shared
+    settings:
+      GENERATE_INFOPLIST_FILE: true
+      MARKETING_VERSION: "1.0"
+      CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - target: AIQuota

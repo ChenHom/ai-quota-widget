@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Xcode 使用者狀態
+xcuserdata/
+*.xcuserstate
+
+# Build 產物
+DerivedData/
+build/
