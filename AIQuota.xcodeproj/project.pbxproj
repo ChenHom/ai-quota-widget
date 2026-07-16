@@ -17,6 +17,7 @@
 		374841FB8C46469176AFF1ED /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBB08B8B5C8F9627998D931B /* MockData.swift */; };
 		3860052F7EA100FA81FEBD50 /* ProviderDisplayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFFBDD630E97D259B9546D3 /* ProviderDisplayState.swift */; };
 		399C553E68ABC1D6A01B24FE /* quota_missing_provider.json in Resources */ = {isa = PBXBuildFile; fileRef = E4BB0DA865B7ABFA4B57D043 /* quota_missing_provider.json */; };
+		3BCD63B8BB274317A3612DBD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DDBF7B0913F112F2FE834B5 /* Assets.xcassets */; };
 		3D0B10525CD14727A4319258 /* FreshnessState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66218590FB94D55ADD2C14A2 /* FreshnessState.swift */; };
 		4045AFC34EBCF337D612E94D /* QuotaError.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB162CDED2AD122D5768C98B /* QuotaError.swift */; };
 		41DBF76771750DF1D0321524 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80CBEEA8F415E4D677568A2 /* DashboardView.swift */; };
@@ -118,6 +119,7 @@
 		5B3270C89FE00CB8EA0E14F8 /* quota_normal.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = quota_normal.json; sourceTree = "<group>"; };
 		66218590FB94D55ADD2C14A2 /* FreshnessState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreshnessState.swift; sourceTree = "<group>"; };
 		6AAE28FC4F24193C7DF8B860 /* AIQuotaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIQuotaWidget.swift; sourceTree = "<group>"; };
+		6DDBF7B0913F112F2FE834B5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		76D9EEAA0A27FF50A5E170F4 /* AIQuotaWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AIQuotaWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		82E0CB9ABF63C21B1D9FE082 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		888B6490C70B92601A71E6AE /* APIClientErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientErrorTests.swift; sourceTree = "<group>"; };
@@ -136,7 +138,7 @@
 		C14EAE8B7FB06773EB6E235E /* QuotaAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaAPIClient.swift; sourceTree = "<group>"; };
 		CB162CDED2AD122D5768C98B /* QuotaError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaError.swift; sourceTree = "<group>"; };
 		CBB08B8B5C8F9627998D931B /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
-		CC6301FDA02512028BAEE8BD /* AIQuotaTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AIQuotaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC6301FDA02512028BAEE8BD /* AIQuotaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AIQuotaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9D4BD28B9DB7B12B8A0EA0A /* SemanticColor+SwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SemanticColor+SwiftUI.swift"; sourceTree = "<group>"; };
 		DF0AE118BDFFF131424CFE9E /* quota_optional.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = quota_optional.json; sourceTree = "<group>"; };
 		E43C4D68658AC8A9EC49721C /* ProgressRingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRingView.swift; sourceTree = "<group>"; };
@@ -284,6 +286,7 @@
 			isa = PBXGroup;
 			children = (
 				8F7F20F9005F1E51C5CD0150 /* AIQuota.entitlements */,
+				6DDBF7B0913F112F2FE834B5 /* Assets.xcassets */,
 				D7DBF19C73A745C111867DB2 /* App */,
 				B218187B83C1C2BB402FD494 /* Presentation */,
 			);
@@ -353,6 +356,7 @@
 			buildConfigurationList = 32BF432C6F21647FFE372D58 /* Build configuration list for PBXNativeTarget "AIQuota" */;
 			buildPhases = (
 				AEE023DFD7EC2C6153008C62 /* Sources */,
+				906B2306FDF27E3FE30B791C /* Resources */,
 				6ED5D27AA229E2A93B14F611 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -443,6 +447,14 @@
 				762DDC451A7ED285D68C3E91 /* quota_optional.json in Resources */,
 				E91C714977C9C4AE71AD91CC /* quota_unknown_status.json in Resources */,
 				5EDC764AFE4172ACEA673A41 /* quota_unsupported_schema.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		906B2306FDF27E3FE30B791C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3BCD63B8BB274317A3612DBD /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -603,6 +615,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -623,6 +636,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -668,7 +682,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleURLTypes = "[[\"CFBundleURLName\": \"com.hom.AIQuota\", \"CFBundleURLSchemes\": [\"aiquota\"]]]";
+				INFOPLIST_KEY_CFBundleURLTypes = "[[\"CFBundleURLSchemes\": [\"aiquota\"], \"CFBundleURLName\": \"com.hom.AIQuota\"]]";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "此 App 需要存取區域網路以取得 AI Quota Collector 產生的額度資料。";
 				INFOPLIST_KEY_UILaunchScreen = "[:]";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -773,8 +787,9 @@
 				CODE_SIGN_ENTITLEMENTS = AIQuotaApp/AIQuota.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleURLTypes = "[[\"CFBundleURLName\": \"com.hom.AIQuota\", \"CFBundleURLSchemes\": [\"aiquota\"]]]";
+				INFOPLIST_KEY_CFBundleURLTypes = "[[\"CFBundleURLSchemes\": [\"aiquota\"], \"CFBundleURLName\": \"com.hom.AIQuota\"]]";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "此 App 需要存取區域網路以取得 AI Quota Collector 產生的額度資料。";
 				INFOPLIST_KEY_UILaunchScreen = "[:]";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
