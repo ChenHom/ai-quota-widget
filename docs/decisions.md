@@ -1,9 +1,19 @@
 # AIQuota 決策與修正記錄
 
-最後更新：2026-07-16
-相關文件：[產品規格](specification.md) · [實作規劃](implementation-plan.md) · [工作清單](tasks.md)
+最後更新：2026-08-07
+相關文件：[產品規格](specification.md) · [實作規劃](implementation-plan.md) · [工作清單](tasks.md) · [部署自動化](../scripts/README.md)
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
+
+## 2026-08-07 決策：新增 iPhone 自動重新部署腳本，避免免費簽章 7 天過期
+
+**現象**：已安裝在 iPhone 上的 AIQuota App 與 Widget，會在一段時間後整個無法使用——點擊 widget 跳出系統彈窗「「AIQuota」無法再使用」，App 圖示本身也無法開啟。
+
+**原因分析**：這個 App 目前用 Xcode 直接 Run 到實體 iPhone 安裝，`DEVELOPMENT_TEAM = 64A8UWB8MW` 對應的是免費個人 Apple ID（Personal Team，`isFreeProvisioningTeam = 1`）。這類簽章 iOS 只信任**7 天**，過期後整個 App（含內嵌的 widget extension）會被系統撤銷執行權限。診斷過程中先逐一排除了 TLS 憑證信任、iOS widget 背景刷新預算被節流、App Group 快取失效等可能性——這些因素在 App 還沒過期的那幾天內確實可能造成暫時性的資料延遲，但「整個 App 無法開啟」這個規律性的失效，根因是簽章信任期限，不是資料層或網路層的問題。
+
+**決策**：不改用付費 Apple Developer Program（$99/年，簽章效期可延長到 1 年），而是新增 `scripts/redeploy.sh` 自動化腳本：iPhone 接上 USB 時（透過 macOS 內建 Image Capture 的裝置連接 hook 觸發，設定步驟見 [`scripts/README.md`](../scripts/README.md)），若距離上次成功部署超過 5 天，就重新 build + 安裝一次，持續重置這 7 天信任窗。範圍刻意只處理 wired（USB 接電腦）情境，不處理 WiFi/VPN 遠端觸發——使用者接電腦時人在現場，安裝失敗與否會自己察覺，不需要額外通知機制；只有 build 本身失敗（簽章壞掉、專案設定跑掉等結構性問題）才會用系統通知提醒，因為那代表自動化本身壞了，跟手機在不在現場無關。
+
+**驗證**：實測跑過完整流程——手動執行 `xcodebuild ... -allowProvisioningUpdates ...` 確認無互動提示、乾淨成功；執行 `redeploy.sh` 完成一次真實的 build + `devicectl install`，iPhone 上的 App 恢復正常；立即再執行一次確認 due-check 正確略過（避免每次充電都重新 build）；透過 Image Capture hook 觸發的 wrapper app 亦手動雙擊測試過會正確呼叫腳本。
 
 ## 2026-07-16 修正：Widget Provider 名稱「Claude」折成兩行
 
