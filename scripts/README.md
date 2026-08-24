@@ -1,4 +1,4 @@
-# AIQuota 自動重新部署（避免免費簽章 7 天過期）
+# AIQuota 手動重新部署（避免免費簽章 7 天過期）
 
 ## 問題背景
 
@@ -6,39 +6,45 @@
 （Personal Team），iOS 只信任這種簽章 **7 天**。過期後 App 與 widget 會一起失效，
 點擊 widget 會跳出「「AIQuota」無法再使用」。
 
-`redeploy.sh` 在 iPhone 接上 USB 時被觸發，若距離上次成功部署超過 5 天，就重新
-build + 安裝一次，藉此重置這 7 天信任窗。只認 wired（USB 接電腦）——WiFi／VPN
-情境不處理，因為使用者接電腦時人就在現場，不需要額外的遠端觸發機制。
+`redeploy.sh` 若距離上次成功部署超過 5 天，就重新 build + 安裝一次，藉此重置這
+7 天信任窗；沒到門檻或手機沒接著都會安靜跳過，可以放心重複執行。
+
+**原本設計是接上 USB 就透過 macOS Image Capture 的裝置 hook 自動觸發，但實測
+發現這台 Mac（macOS 26.5.2）上這個機制根本不會觸發**——`com.apple.imagecapture.plist`
+沒有寫入任何裝置 hook 設定、`com.apple.digihub.plist`（這功能的傳統設定檔）
+不存在、`log show` 也查不到任何 `imagecaptureagent`/`digihub` 行程活動，
+launchd 裡也沒有對應的常駐服務。連續 13 天多次接上 USB，自動化完全沒有再跑過
+一次。判斷是這個系統版本已經拿掉/不支援這個 hook 了，所以放棄自動觸發，改成
+**手動觸發**：接上手機時自己雙擊一下即可。
 
 ## 一次性設定
 
-### 1. 編出 wrapper app
+### 1. 編出可雙擊執行的 wrapper app
 
-Image Capture 的「裝置連接時自動開啟」功能只能指定一個 App，不能直接指定 shell
-script，所以用 `osacompile`（macOS 內建）編一個極簡的 wrapper：
+比每次打開 Terminal 方便：
 
 ```bash
 osacompile -o ~/Applications/"AIQuota Redeploy.app" \
   -e 'do shell script "/Users/hom/code/ai/ai-quota-widget/scripts/redeploy.sh"'
 ```
 
-### 2. 設定 Image Capture 的裝置 hook
+### 2. 安裝每日提醒（避免忘記手動觸發）
 
-1. 用 USB 線把 iPhone 接上這台 Mac。
-2. 打開 **Image Capture.app**（`/Applications/Image Capture.app`）。
-3. 在左側裝置列表點選這支 iPhone。
-4. 視窗左下角「Connecting this iPhone opens:」下拉選單，選擇剛剛編出來的
-   `AIQuota Redeploy.app`（選單裡選「Other…」瀏覽到 `~/Applications/`）。
+手動觸發最大的風險是忘記。`scripts/remind.sh` 每天被 `launchd` 叫醒一次，距離
+上次成功部署 ≥ 5 天時發系統通知；沒到門檻就安靜結束，純檢查、不做 build/安裝。
 
-設定完成後，之後每次這支 iPhone 接上 USB，系統就會自動啟動這個 wrapper app，
-執行 `redeploy.sh`。
+```bash
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.hom.aiquota-redeploy-reminder.plist
+```
 
-## 手動測試
+LaunchAgent plist（`~/Library/LaunchAgents/com.hom.aiquota-redeploy-reminder.plist`，
+機器專屬設定，不進 repo）：每天 09:00 執行 `scripts/remind.sh`，log 在
+`~/Library/Logs/AIQuota-Redeploy/remind.log`。
 
-- 直接雙擊 `~/Applications/AIQuota Redeploy.app`，或者
-- 拔掉再插上一次 iPhone 的 USB 線。
+## 使用方式
 
-跑完後檢查：
+手機接上 USB 後，雙擊 `~/Applications/AIQuota Redeploy.app`（或直接執行
+`scripts/redeploy.sh`）。跑完後檢查：
 
 ```bash
 cat ~/Library/Logs/AIQuota-Redeploy/redeploy.log
@@ -58,9 +64,9 @@ cat ~/Library/Application\ Support/AIQuota-Redeploy/last-success   # epoch 秒�
   ```
   如果之後這個自動化開始莫名其妙失敗，先打開 Xcode 檢查 Accounts 頁面的登入狀態。
 - **`do shell script` 的執行環境 PATH 比較精簡**。`xcodebuild`/`xcrun` 通常本來就
-  在 `/usr/bin` 這種預設路徑下，理論上不用額外處理；但第一次透過 Image Capture
-  hook 實際觸發測試時要確認一次，log 裡如果出現 `command not found`，才需要在
-  `redeploy.sh` 開頭加 `export PATH=...`。
+  在 `/usr/bin` 這種預設路徑下，理論上不用額外處理；但第一次雙擊 wrapper app
+  觸發時要確認一次，log 裡如果出現 `command not found`，才需要在 `redeploy.sh`
+  開頭加 `export PATH=...`。
 
 ## 狀態／log 位置
 

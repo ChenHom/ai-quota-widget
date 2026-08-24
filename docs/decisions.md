@@ -1,9 +1,21 @@
 # AIQuota 決策與修正記錄
 
-最後更新：2026-08-07
+最後更新：2026-08-20
 相關文件：[產品規格](specification.md) · [實作規劃](implementation-plan.md) · [工作清單](tasks.md) · [部署自動化](../scripts/README.md)
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
+
+## 2026-08-20 決策：放棄 Image Capture 自動觸發，改為手動雙擊重新部署
+
+**現象**：2026-08-07 設定好的「iPhone 接上 USB 就自動重新部署」流程，13 天內完全沒有再自動跑過——`redeploy.log` 裡只有設定當晚（23:10-23:11）的紀錄，之後即使多次接上 USB 也沒有任何新的 log。
+
+**原因分析**：診斷發現整個自動觸發機制在這台 Mac（macOS 26.5.2）上根本不會生效：`~/Library/Preferences/com.apple.imagecapture.plist` 裡只有 `loggingLevel`，從來沒有寫入任何裝置 hook 設定；這個功能傳統上的設定檔 `com.apple.digihub.plist` 根本不存在；`log show` 查詢最近 3 天完全找不到 `imagecaptureagent`／`digihub` 任何行程活動；`launchctl list` 與所有 LaunchAgent/LaunchDaemon plist 裡也沒有對應的常駐服務註冊。判斷 Image Capture 這個「裝置連接時自動開啟指定 App」功能在此系統版本上已經失效或被移除，8/7 當晚 GUI 裡設定的下拉選單從未真正被系統持久化。
+
+**決策**：不追加更複雜的觸發機制（例如自行寫 IOKit USB attach 事件常駐程式），改為最簡單的路：`scripts/redeploy.sh` 與 `~/Applications/AIQuota Redeploy.app` 都維持不變，只是觸發方式改成手機接上 USB 後手動雙擊一下 wrapper app。腳本本身已經有 5 天門檻 + 手機不在時安全跳過的邏輯，重複手動執行沒有副作用。移除 `scripts/README.md` 裡的 Image Capture 設定步驟。
+
+**驗證**：`com.apple.imagecapture.plist`、`com.apple.digihub.plist`、`log show --predicate 'process contains "ImageCapture" or process contains "digihub"' --last 3d`、`launchctl list` 四項檢查交叉確認同一個結論——系統層級找不到任何這個 hook 曾經觸發或被登記的痕跡。
+
+**補充**：純手動觸發最大的風險是忘記，所以另外加了 `scripts/remind.sh` + `launchd` LaunchAgent（`com.hom.aiquota-redeploy-reminder`，機器專屬設定，不進 repo），每天 09:00 檢查一次距離上次成功部署天數，≥ 5 天就發系統通知提醒手動接上手機雙擊 wrapper app；純時間檢查，不碰裝置狀態，跟被判定失效的 Image Capture 機制無關。已用假造的舊 `last-success` 時間戳測試過通知邏輯正常觸發。
 
 ## 2026-08-07 決策：新增 iPhone 自動重新部署腳本，避免免費簽章 7 天過期
 

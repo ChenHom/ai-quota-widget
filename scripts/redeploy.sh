@@ -1,7 +1,7 @@
 #!/bin/bash
 # 免費個人 Apple ID 簽章的 App 在 iPhone 上只被信任 7 天，過期後 AIQuota App／Widget 會整個
-# 無法啟動（點擊跳出「無法再使用」）。這支腳本在 iPhone 接上 USB 時被觸發（見 scripts/README.md
-# 的 Image Capture 設定），距離上次成功部署超過 5 天就重新 build + 安裝一次，把 7 天信任窗重置。
+# 無法啟動（點擊跳出「無法再使用」）。手機接上 USB 後手動雙擊 wrapper app 觸發（見
+# scripts/README.md），距離上次成功部署超過 5 天就重新 build + 安裝一次，把 7 天信任窗重置。
 set -uo pipefail
 
 UDID="2A7AFE17-04B0-5243-A8B0-D3FD4D0BE8F3"

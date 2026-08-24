@@ -655,6 +655,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = AIQuotaWidgetExtension/AIQuotaWidget.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AIQuotaWidgetExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -677,6 +678,7 @@
 				CODE_SIGN_ENTITLEMENTS = AIQuotaApp/AIQuota.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "[[\"CFBundleURLSchemes\": [\"aiquota\"], \"CFBundleURLName\": \"com.hom.AIQuota\"]]";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "此 App 需要存取區域網路以取得 AI Quota Collector 產生的額度資料。";
@@ -698,6 +700,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = AIQuotaWidgetExtension/AIQuotaWidget.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AIQuotaWidgetExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -782,6 +785,7 @@
 				CODE_SIGN_ENTITLEMENTS = AIQuotaApp/AIQuota.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 64A8UWB8MW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "[[\"CFBundleURLSchemes\": [\"aiquota\"], \"CFBundleURLName\": \"com.hom.AIQuota\"]]";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "此 App 需要存取區域網路以取得 AI Quota Collector 產生的額度資料。";
