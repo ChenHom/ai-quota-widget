@@ -49,6 +49,54 @@ struct QuotaDisplayMappingTests {
         #expect(claude.fiveHour.percentText == "—")
     }
     
+    @Test func testResetCreditsMapping() {
+        let response = QuotaResponse(
+            schemaVersion: 1,
+            generatedAt: fixedNow,
+            providers: [
+                // 有券：徽章顯示張數，到期清單依 JSON 原順序
+                "codex": ProviderQuota(
+                    provider: "codex",
+                    status: "ok",
+                    lastSuccessAt: fixedNow,
+                    windows: QuotaWindows(fiveHour: nil, sevenDay: nil),
+                    resetCredits: ResetCredits(
+                        availableCount: 2,
+                        credits: [
+                            ResetCredit(status: "available", grantedAt: fixedNow, expiresAt: fixedNow.addingTimeInterval(7200)),
+                            ResetCredit(status: "available", grantedAt: fixedNow, expiresAt: nil)
+                        ]
+                    )
+                ),
+                // 0 張：完全不顯示徽章
+                "claude": ProviderQuota(
+                    provider: "claude",
+                    status: "ok",
+                    lastSuccessAt: fixedNow,
+                    windows: QuotaWindows(fiveHour: nil, sevenDay: nil),
+                    resetCredits: ResetCredits(availableCount: 0, credits: [])
+                ),
+                // 沒有 resetCredits 欄位的 Provider 不受影響
+                "agy": ProviderQuota(
+                    provider: "agy",
+                    status: "ok",
+                    lastSuccessAt: fixedNow,
+                    windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
+                )
+            ]
+        )
+        
+        let state = QuotaDisplayState.map(response: response, fetchedAt: fixedNow, now: fixedNow)
+        
+        let codex = state.providers.first(where: { $0.id == "codex" })!
+        #expect(codex.resetCredits?.badgeText == "+2")
+        // 2026-07-16T12:00:00Z 固定以 Asia/Taipei（+8）顯示，不隨裝置時區改變
+        #expect(codex.resetCredits?.expiryTexts == ["07/16 20:00", "—"])
+        
+        #expect(state.providers.first(where: { $0.id == "claude" })!.resetCredits == nil)
+        #expect(state.providers.first(where: { $0.id == "agy" })!.resetCredits == nil)
+    }
+    
     @Test func testPercentClippingAndOptionalMapping() {
         let response = QuotaResponse(
             schemaVersion: 1,

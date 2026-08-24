@@ -75,6 +75,7 @@ struct DashboardView: View {
 
 struct ProviderCardView: View {
     let provider: ProviderDisplayState
+    @State private var showingResetCredits = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -84,6 +85,10 @@ struct ProviderCardView: View {
                     .font(.title3)
                     .fontWeight(.bold)
                     .fontDesign(.rounded)
+                
+                if let credits = provider.resetCredits {
+                    resetCreditsBadge(credits)
+                }
                 
                 Spacer()
                 
@@ -129,6 +134,38 @@ struct ProviderCardView: View {
                 .fill(Color(.secondarySystemGroupedBackground))
                 .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 5)
         )
+    }
+    
+    // 重置券只顯示張數徽章，點擊才展開到期清單，避免卡片高度隨券數浮動
+    private func resetCreditsBadge(_ credits: ResetCreditsDisplayState) -> some View {
+        Button {
+            showingResetCredits = true
+        } label: {
+            Text(credits.badgeText)
+                .font(.caption2)
+                .fontWeight(.bold)
+                .foregroundStyle(Color.accentColor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("重置券 \(credits.availableCount) 張，點兩下查看到期時間")
+        .popover(isPresented: $showingResetCredits) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("重置券到期時間")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                
+                ForEach(Array(credits.expiryTexts.enumerated()), id: \.offset) { _, text in
+                    Text(text)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(12)
+            .presentationCompactAdaptation(.popover)
+        }
     }
     
     @ViewBuilder

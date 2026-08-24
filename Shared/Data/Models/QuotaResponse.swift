@@ -17,12 +17,37 @@ public struct ProviderQuota: Codable, Sendable {
     public let status: String
     public let lastSuccessAt: Date
     public let windows: QuotaWindows
+    public let resetCredits: ResetCredits?
     
-    public init(provider: String, status: String, lastSuccessAt: Date, windows: QuotaWindows) {
+    public init(provider: String, status: String, lastSuccessAt: Date, windows: QuotaWindows, resetCredits: ResetCredits? = nil) {
         self.provider = provider
         self.status = status
         self.lastSuccessAt = lastSuccessAt
         self.windows = windows
+        self.resetCredits = resetCredits
+    }
+}
+
+/// 重置券。collector 端的 `applicableAvailableCount` 語意未定，先不解碼也不顯示。
+public struct ResetCredits: Codable, Sendable {
+    public let availableCount: Int
+    public let credits: [ResetCredit]
+    
+    public init(availableCount: Int, credits: [ResetCredit]) {
+        self.availableCount = availableCount
+        self.credits = credits
+    }
+}
+
+public struct ResetCredit: Codable, Sendable {
+    public let status: String
+    public let grantedAt: Date
+    public let expiresAt: Date?
+    
+    public init(status: String, grantedAt: Date, expiresAt: Date?) {
+        self.status = status
+        self.grantedAt = grantedAt
+        self.expiresAt = expiresAt
     }
 }
 

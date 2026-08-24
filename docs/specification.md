@@ -97,6 +97,17 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
           "remainingPercent": 54.0,
           "resetsAt": null
         }
+      },
+      "resetCredits": {
+        "availableCount": 2,
+        "applicableAvailableCount": 1,
+        "credits": [
+          {
+            "status": "available",
+            "grantedAt": "2026-07-01T00:00:00Z",
+            "expiresAt": "2026-08-01T00:00:00Z"
+          }
+        ]
       }
     }
   }
@@ -117,6 +128,11 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 | `seven_day` | Object 或 null | 是 | 缺值不可轉成 0% |
 | `remainingPercent` | Double | 是 | 顯示時限制於 0–100；保留原始值供診斷 |
 | `resetsAt` | ISO 8601 Date 或 null | 是 | null 顯示為 `—` 或省略 |
+| `resetCredits` | Object 或缺 | 否 | 重置券；缺欄位或 `availableCount` 為 0 時完全不顯示 |
+| `availableCount` | Integer | 是（在 `resetCredits` 內） | 徽章顯示的張數 |
+| `applicableAvailableCount` | Integer | 否 | 與 `availableCount` 的語意差異未定，暫不解碼、不顯示 |
+| `credits` | Array | 是（在 `resetCredits` 內） | 每筆含 `status`／`grantedAt`／`expiresAt` |
+| `expiresAt` | ISO 8601 Date 或 null | 是（在 `credits` 內） | 固定以 Asia/Taipei 顯示；null 顯示為 `—` |
 
 ### 5.3 Provider 順序
 

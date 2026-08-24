@@ -23,6 +23,13 @@ public enum MockData {
                     windows: QuotaWindows(
                         fiveHour: UsageWindow(remainingPercent: 63.0, resetsAt: now.addingTimeInterval(3600)),
                         sevenDay: UsageWindow(remainingPercent: 78.5, resetsAt: now.addingTimeInterval(86400 * 3))
+                    ),
+                    resetCredits: ResetCredits(
+                        availableCount: 2,
+                        credits: [
+                            ResetCredit(status: "available", grantedAt: now.addingTimeInterval(-86400 * 10), expiresAt: now.addingTimeInterval(86400 * 20)),
+                            ResetCredit(status: "available", grantedAt: now.addingTimeInterval(-86400 * 3), expiresAt: nil)
+                        ]
                     )
                 ),
                 "agy": ProviderQuota(

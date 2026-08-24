@@ -1,9 +1,28 @@
 # AIQuota 決策與修正記錄
 
-最後更新：2026-08-20
+最後更新：2026-08-24
 相關文件：[產品規格](specification.md) · [實作規劃](implementation-plan.md) · [工作清單](tasks.md) · [部署自動化](../scripts/README.md)
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
+
+## 2026-08-24 決策：`resetCredits` 以徽章加點擊清單呈現，不逐筆攤開
+
+**背景**：collector 的 quota.json 新增 `resetCredits`（`availableCount`／`applicableAvailableCount`／`credits[]`），代表重置券張數與各張券的授予、到期時間。macOS 端（[ai-quota](https://github.com/ChenHom/ai-quota/blob/main/docs/development-decisions.md) 第 8 節）已決定用「徽章 + 摘要清單」呈現，iPhone 端沿用同一個結論。
+
+**原因分析**：Dashboard 的 Provider 卡片是固定結構（名稱列 + 5h/7d 雙環 + 更新時間），逐筆攤開每張券會讓卡片高度隨券數浮動，券數又是隨時會變的資料；而重置券屬於偶爾查看的邊緣資訊，不值得長期佔用卡片版面。
+
+**處理方式**：
+
+- `ProviderQuota` 新增 `resetCredits: ResetCredits?`（`init` 預設 `nil`，既有呼叫端不受影響）；`ResetCredit` 只解 `status`／`grantedAt`／`expiresAt`。
+- `applicableAvailableCount` 不解碼：collector 端尚未定義它與 `availableCount` 的差異語意，先不顯示一個意涵不確定的數字（Decodable 會忽略未宣告的 key，JSON 有這個欄位也不會出錯）。
+- `ProviderDisplayState` 新增 `resetCredits: ResetCreditsDisplayState?`；mapping 時 `availableCount == 0` 或欄位缺失一律映射成 `nil`，沒有重置券的 Provider 完全不受影響。
+- UI 只在 Provider 名稱旁加一個 `+N` 膠囊徽章，點擊以 `.popover`（`presentationCompactAdaptation(.popover)`，iPhone 上維持氣泡而非 sheet）列出每張券的到期時間。
+- 到期時間固定以 `Asia/Taipei` 換算顯示，不隨裝置時區改變，與 collector 端口徑一致；卡片其他時間（更新時間、5h／7d 重置時間）維持裝置時區，這次不一併改動。
+- Widget 不加徽章：medium widget 每列已經是「名稱 + 5h + 7d 進度條」，空間吃緊，且 widget 不能點開清單，只顯示張數等於資訊不完整。
+
+**驗證**：`testResetCreditsDecoding` 驗證含 `applicableAvailableCount` 與 `expiresAt: null` 的 JSON 能正確解碼；`testResetCreditsMapping` 驗證徽章文字、Asia/Taipei 到期時間格式，以及 0 張券／缺欄位映射為 `nil`。
+
+**取捨**：使用者要多一次點擊才看得到完整到期清單。若之後重置券變成常態關注重點，再考慮在 5h／7d 下面加第三行，而不是藏在點擊互動裡。
 
 ## 2026-08-20 決策：放棄 Image Capture 自動觸發，改為手動雙擊重新部署
 

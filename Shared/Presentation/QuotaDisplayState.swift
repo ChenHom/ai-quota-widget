@@ -67,7 +67,8 @@ public extension QuotaDisplayState {
                     status: status,
                     lastSuccessAt: providerData.lastSuccessAt,
                     fiveHour: fiveHourState,
-                    sevenDay: sevenDayState
+                    sevenDay: sevenDayState,
+                    resetCredits: mapResetCredits(providerData.resetCredits)
                 )
             } else {
                 // 缺少 Provider 時顯示佔位符
@@ -87,6 +88,14 @@ public extension QuotaDisplayState {
             freshness: freshness,
             generatedAt: response?.generatedAt,
             fetchedAt: fetchedAt
+        )
+    }
+    
+    private static func mapResetCredits(_ resetCredits: ResetCredits?) -> ResetCreditsDisplayState? {
+        guard let resetCredits, resetCredits.availableCount > 0 else { return nil }
+        return ResetCreditsDisplayState(
+            availableCount: resetCredits.availableCount,
+            expiresAt: resetCredits.credits.map(\.expiresAt)
         )
     }
     
