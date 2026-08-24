@@ -20,9 +20,6 @@ struct DashboardView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
-                        // 頂部新鮮度標示與同步狀態
-                        freshnessHeaderSection
-                        
                         // 三個 Provider 卡片
                         ForEach(viewModel.displayState.providers) { provider in
                             ProviderCardView(provider: provider)
@@ -31,13 +28,12 @@ struct DashboardView: View {
                         if let error = viewModel.errorMessage {
                             errorMessageView(error)
                         }
-                        
-                        // 底部手動重新整理按鈕
-                        refreshButton
-                            .padding(.top, 10)
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 30)
+                }
+                .refreshable {
+                    await viewModel.refresh()
                 }
             }
             .navigationTitle("AI Quota")
@@ -51,67 +47,10 @@ struct DashboardView: View {
                             .foregroundStyle(.primary)
                     }
                 }
-                
-                // 為了展示方便，在 toolbar 放一個 Mock 切換按鈕
-                ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        Button("正常狀態 (Fresh)") { viewModel.loadMockData(.normal) }
-                        Button("同步延遲 (Delayed)") { viewModel.loadMockData(.delayed) }
-                        Button("資料過期 (Stale)") { viewModel.loadMockData(.stale) }
-                        Button("網路失敗 (Error)") { viewModel.loadMockData(.unavailable) }
-                    } label: {
-                        Image(systemName: "arrow.triangle.2.circlepath.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                }
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsView(viewModel: viewModel)
             }
-        }
-    }
-    
-    private var freshnessHeaderSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(freshnessIndicatorColor)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: freshnessIndicatorColor.opacity(0.5), radius: 4)
-                    
-                    Text(viewModel.displayState.freshness.displayText)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Text(viewModel.displayState.lastSyncText)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            
-            Spacer()
-            
-            if viewModel.isLoading {
-                ProgressView()
-                    .controlSize(.small)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
-        )
-    }
-    
-    private var freshnessIndicatorColor: Color {
-        switch viewModel.displayState.freshness {
-        case .fresh: return SemanticColor.green.color
-        case .delayed: return SemanticColor.orange.color
-        case .stale: return SemanticColor.red.color
-        case .unavailable: return SemanticColor.gray.color
         }
     }
     
@@ -129,33 +68,6 @@ struct DashboardView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(SemanticColor.red.color.opacity(0.08))
         )
-    }
-    
-    private var refreshButton: some View {
-        Button {
-            Task {
-                await viewModel.refresh()
-            }
-        } label: {
-            HStack {
-                Image(systemName: "arrow.clockwise")
-                Text("手動重新整理")
-            }
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(
-                LinearGradient(
-                    colors: [Color.blue, Color.blue.opacity(0.85)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .shadow(color: Color.blue.opacity(0.2), radius: 8, x: 0, y: 4)
-        }
-        .disabled(viewModel.isLoading)
     }
 }
 
@@ -205,7 +117,7 @@ struct ProviderCardView: View {
             if let lastSuccess = provider.lastSuccessAt {
                 HStack {
                     Spacer()
-                    Text("來源更新時間：\(formatDate(lastSuccess))")
+                    Text("更新時間：\(formatDate(lastSuccess))")
                         .font(.caption2)
                         .foregroundStyle(.secondary.opacity(0.75))
                 }
