@@ -7,16 +7,13 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // 背景漸層
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(.systemBackground),
-                        Color(.systemGroupedBackground)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                // 卡片用 .secondarySystemGroupedBackground（淺色模式為白），
+                // 底色就必須是 .systemGroupedBackground 才有對比。
+                // 原本的漸層頂端是 .systemBackground，淺色模式下同樣是白色，
+                // 配上這次移除陰影後（與 macOS 端一致，陰影套在島上會變黑方塊）
+                // 螢幕上方的卡片會整個融進背景看不見
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
 
                 ScrollView {
                     // 卡片間距與 macOS 端的面板一致（10pt）
