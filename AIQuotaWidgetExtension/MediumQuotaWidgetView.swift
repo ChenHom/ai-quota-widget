@@ -78,12 +78,28 @@ struct MediumQuotaWidgetView: View {
     private func providerRow(_ provider: ProviderDisplayState) -> some View {
         HStack(spacing: 10) { // 稍微縮減 spacing，為進度條與名稱爭取更多空間
             // Provider Name - 固定字級（不隨動態字體放大，與同列 5h/7d、百分比一致），
-            // 超出欄寬時以 minimumScaleFactor 縮小而非折行
-            Text(provider.displayName)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .frame(width: 52, alignment: .leading)
+            // 超出欄寬時以 minimumScaleFactor 縮小而非折行。
+            // 欄寬 66pt 是為了容納重置券徽章：每列都留同樣的寬度，沒有券的列
+            // 才不會讓三列的進度條對不齊
+            HStack(spacing: 3) {
+                Text(provider.displayName)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+
+                // Widget 不能開 popover，徽章只顯示張數；到期時間要進 App 才看得到
+                if let credits = provider.resetCredits {
+                    Text(credits.badgeText)
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 3)
+                        .padding(.vertical, 1)
+                        .background(Color.accentColor.opacity(0.18), in: Capsule())
+                        .widgetAccentable()
+                }
+            }
+            .frame(width: 66, alignment: .leading)
             
             // 5 Hours Quota Bar
             HStack(spacing: 4) {

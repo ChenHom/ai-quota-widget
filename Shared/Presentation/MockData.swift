@@ -7,6 +7,7 @@ public enum MockData {
             schemaVersion: 2,
             generatedAt: now.addingTimeInterval(-300), // 5 分鐘前
             providers: [
+                // 重置券目前只有 codex 會有值（見 collector 的 schema v2 文件）
                 "codex": [
                     ProviderQuota(
                         provider: "codex",
@@ -16,6 +17,13 @@ public enum MockData {
                         windows: QuotaWindows(
                             fiveHour: UsageWindow(remainingPercent: 82.4, resetsAt: now.addingTimeInterval(7200)),
                             sevenDay: UsageWindow(remainingPercent: 54.0, resetsAt: nil)
+                        ),
+                        resetCredits: ResetCredits(
+                            availableCount: 2,
+                            credits: [
+                                ResetCredit(status: "available", grantedAt: now.addingTimeInterval(-86400 * 10), expiresAt: now.addingTimeInterval(86400 * 20)),
+                                ResetCredit(status: "available", grantedAt: now.addingTimeInterval(-86400 * 3), expiresAt: nil)
+                            ]
                         )
                     )
                 ],
@@ -28,16 +36,9 @@ public enum MockData {
                         windows: QuotaWindows(
                             fiveHour: UsageWindow(remainingPercent: 63.0, resetsAt: now.addingTimeInterval(3600)),
                             sevenDay: UsageWindow(remainingPercent: 78.5, resetsAt: now.addingTimeInterval(86400 * 3))
-                        ),
-                        resetCredits: ResetCredits(
-                            availableCount: 2,
-                            credits: [
-                                ResetCredit(status: "available", grantedAt: now.addingTimeInterval(-86400 * 10), expiresAt: now.addingTimeInterval(86400 * 20)),
-                                ResetCredit(status: "available", grantedAt: now.addingTimeInterval(-86400 * 3), expiresAt: nil)
-                            ]
                         )
                     ),
-                    // 第二個帳號：目前 UI 只顯示 main，留在這裡是為了讓預覽與測試走到多帳號路徑
+                    // 第二個帳號：Dashboard 的疊牌與 Widget 的「只取預設帳號」都靠它預覽
                     ProviderQuota(
                         provider: "claude",
                         account: "work",

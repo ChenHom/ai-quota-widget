@@ -5,6 +5,22 @@
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
 
+## 2026-09-17 修正：Widget 補上重置券 `+N` 徽章
+
+**現象**：macOS 面板與 App Dashboard 都會在 Provider 名稱旁顯示重置券的 `+N` 徽章，只有 Widget 沒有 — `MediumQuotaWidgetView` 從來沒有引用過 `resetCredits`。這不是回歸，是 2026-08-24 加徽章時就只做了 App 端。
+
+**處理方式**：
+
+- `providerRow` 的名稱欄改成 `HStack`，名稱後面接徽章，欄寬 52pt → 66pt。
+- **每一列都留同樣的欄寬**，即使該 Provider 沒有券。不留的話三列的進度條會對不齊，比省下的 14pt 更礙眼。代價是進度條從約 59pt 縮到約 52pt。
+- Widget 不能開 popover，徽章只顯示張數；到期時間仍然要進 App 才看得到。
+- 徽章加 `.widgetAccentable()`，與進度條同一個 accent 群組，Tinted 模式下才不會被壓成次要色。
+- `voiceOverLabel` 補上「重置券 N 張」：Widget 的徽章不是可觸達的控制項，張數只能靠列的 label 讀出來。
+
+**順帶修正 MockData**：重置券原本掛在 `claude` 上，但 collector 的 schema v2 文件寫明只有 `codex` 會有值。改掛到 `codex`，預覽才符合真實資料 — 這同時也避開「最長的名稱 + 徽章」這個最擠的組合（`Claude` 46pt + 徽章 18pt 會超出 66pt 欄寬而觸發 `minimumScaleFactor`）。
+
+**驗證**：未經編譯或測試執行。66pt 欄寬是依 13pt SF Pro Rounded 的字寬估算，需在模擬器確認 XXL／AX1 字級下不會溢出 — 這是既有 `decisions.md` 記錄過的那套 CLI 渲染驗證該跑的範圍。
+
 ## 2026-09-17 決策：Dashboard 多帳號改用疊牌按壓切換，與 macOS 端一致
 
 **背景**：前一則決策把多帳號攤平成一個帳號一張卡片。實際比對後決定回到 macOS 端的疊牌：卡片疊在同一個位置，按下去整落沉到同一個位置，放開彈回時已經換成下一個帳號 — 交換就藏在收斂的那一刻。攤平的版本被否決。

@@ -159,7 +159,9 @@ public struct ProviderDisplayState: Sendable, Identifiable, Equatable {
 
     public var voiceOverLabel: String {
         let name = accountLabel.map { "\(displayName) \($0)" } ?? displayName
-        return "\(name)，\(status.displayText)，"
+        // Widget 的徽章不是可觸達的控制項，張數只能靠這裡讀出來
+        let credits = resetCredits.map { "，重置券 \($0.availableCount) 張" } ?? ""
+        return "\(name)，\(status.displayText)\(credits)，"
             + "5小時額度\(fiveHour.percentVoiceOverText)，"
             + "7天額度\(sevenDay.percentVoiceOverText)。"
     }
