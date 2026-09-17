@@ -142,9 +142,10 @@ public struct ProviderDisplayState: Sendable, Identifiable, Equatable {
     /// 是否為預設帳號。Widget 目前只顯示預設帳號，維持固定三列版面。
     public var isDefaultAccount: Bool { account == QuotaResponse.defaultAccount }
 
-    /// 多帳號時才顯示的帳號標籤；單帳號沿用 provider 原名，不加後綴。
+    /// 非預設帳號才顯示的標籤。預設帳號沿用 provider 原名、不加後綴，與 macOS 端一致 —
+    /// 疊牌一次只看得到一張卡，哪一張是 main 由指示點與底色交代，不需要再掛一個標籤。
     public var accountLabel: String? {
-        accountCount > 1 ? account : nil
+        (accountCount > 1 && !isDefaultAccount) ? account : nil
     }
 
     /// 卡片上的 provider 最後成功時間，只到分鐘。與 macOS 端一致。
@@ -161,5 +162,49 @@ public struct ProviderDisplayState: Sendable, Identifiable, Equatable {
         return "\(name)，\(status.displayText)，"
             + "5小時額度\(fiveHour.percentVoiceOverText)，"
             + "7天額度\(sevenDay.percentVoiceOverText)。"
+    }
+}
+
+/// 一個 provider 的一落牌。多帳號時卡片疊在同一個位置，按一下把最前面那張壓下去，
+/// 彈回來時已經換成下一個帳號；單帳號時退化成一張普通卡片。
+///
+/// 排序與選取邏輯與 macOS 端的 `ProviderStack` 相同：一律以 `account` 比對而非索引，
+/// 因為伺服器每次快照都可能重排陣列，使用者看的必須還是同一個帳號。
+public struct ProviderStackDisplayState: Sendable, Identifiable, Equatable {
+    public let id: String // providerID
+    public let displayName: String
+    public let accounts: [ProviderDisplayState]
+    
+    public init(id: String, displayName: String, accounts: [ProviderDisplayState]) {
+        self.id = id
+        self.displayName = displayName
+        self.accounts = accounts
+    }
+    
+    public var isMultiAccount: Bool { accounts.count > 1 }
+    
+    /// 以 `frontAccount` 為首的循環排列。
+    /// 帳號不存在（快照換過、該帳號已移除）時退回原順序，也就是 `main` 在最前。
+    public func ordered(from frontAccount: String?) -> [ProviderDisplayState] {
+        guard isMultiAccount,
+              let frontAccount,
+              let start = accounts.firstIndex(where: { $0.account == frontAccount })
+        else { return accounts }
+        return Array(accounts[start...]) + Array(accounts[..<start])
+    }
+    
+    /// 按一下之後要切到的下一個帳號；單帳號時為 nil。
+    public func account(after frontAccount: String?) -> String? {
+        let order = ordered(from: frontAccount)
+        guard order.count > 1 else { return nil }
+        return order[1].account
+    }
+    
+    /// `frontAccount` 在 `accounts` 裡的位置，供指示點標示現在看第幾張。
+    public func index(of frontAccount: String?) -> Int {
+        guard let frontAccount,
+              let index = accounts.firstIndex(where: { $0.account == frontAccount })
+        else { return 0 }
+        return index
     }
 }

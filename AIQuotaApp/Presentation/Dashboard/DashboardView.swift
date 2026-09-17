@@ -24,10 +24,9 @@ struct DashboardView: View {
                             errorMessageView(error)
                         }
 
-                        // 一個帳號一張卡片。schema v2 起 claude 可能同時有 main 與 work，
-                        // Dashboard 是 ScrollView，沒有 Widget 那種固定列數的限制
-                        ForEach(viewModel.displayState.providers) { provider in
-                            ProviderCardView(provider: provider)
+                        // 一個 provider 一落牌。多帳號時卡片疊在同一個位置，按一下換下一個帳號
+                        ForEach(viewModel.displayState.providerStacks) { stack in
+                            ProviderStackCardView(stack: stack)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -107,6 +106,158 @@ struct DashboardView: View {
     }
 }
 
+// MARK: - Provider Stack Card
+
+/// 多帳號 provider 疊成一落牌：按下去整落沉到同一個位置，放開彈回時已經換成下一個帳號。
+/// 交換就藏在收斂到同一個位置的那一刻，這是整個做法的關鍵。單帳號時退化成一張普通卡片。
+struct ProviderStackCardView: View {
+    let stack: ProviderStackDisplayState
+
+    /// 記帳號名稱而非索引：快照刷新後伺服器可能重排陣列，使用者看的要還是同一個帳號
+    @State private var frontAccount: String?
+    /// 整落牌正在被壓住
+    @State private var isPressing = false
+    /// 按下去的時刻，用來算還要不要補足 pressDuration
+    @State private var pressStartedAt: Date?
+    /// 這次按壓是不是真的點擊（而不是捲動把手勢帶走）
+    @State private var pendingSwitch = false
+
+    /// 後面那張往下露出的高度
+    private static let peek: CGFloat = 9
+    /// 每往後一層縮小的比例
+    private static let shrink: CGFloat = 0.045
+    /// 疊超過兩層就不再往下推，避免越堆越糊
+    private static let maxVisibleDepth = 2
+    /// 壓下去的時間。放開得太快時會補足剩下的，確保交換仍然被壓到底那一刻蓋住
+    private static let pressDuration: TimeInterval = 0.13
+    /// 按下去時整落牌往中間收斂的位置（0 = 最前面，1 = 牌底那張）。
+    /// 所有卡片收到同一個位置、大小與明度，誰在前誰在後完全看不出來
+    private static let pressLevel: CGFloat = 0.5
+
+    var body: some View {
+        cardStack
+            .contentShape(Rectangle())
+            .modifier(
+                StackPressGestures(
+                    enabled: stack.isMultiAccount,
+                    onPress: press,
+                    onRelease: release,
+                    onTap: { pendingSwitch = true }
+                )
+            )
+            .accessibilityElement(children: .contain)
+            .accessibilityActions {
+                if stack.isMultiAccount {
+                    Button("切換下一個帳號") { switchAccountDirectly() }
+                }
+            }
+    }
+
+    private var cardStack: some View {
+        let ordered = stack.ordered(from: frontAccount)
+        let activeIndex = stack.index(of: frontAccount)
+
+        return ZStack {
+            ForEach(Array(ordered.enumerated()), id: \.element.id) { depth, provider in
+                let level = isPressing
+                    ? Self.pressLevel
+                    : CGFloat(min(depth, Self.maxVisibleDepth))
+                ProviderCardView(
+                    provider: provider,
+                    activeIndex: activeIndex,
+                    // 疊在後面的卡片不該吃到點擊：重置券徽章是個 Button，
+                    // 蓋在下面仍會搶走最前面那張的觸控
+                    isInteractive: depth == 0
+                )
+                .offset(y: level * Self.peek)
+                .scaleEffect(1 - level * Self.shrink)
+                .opacity(isPressing ? 0.8 : (depth == 0 ? 1 : 0.5))
+                .zIndex(Double(ordered.count - depth))
+            }
+        }
+        // 露出的那一角要留空間，否則會被下一張卡蓋掉
+        .padding(.bottom, stack.isMultiAccount ? Self.peek : 0)
+    }
+
+    // MARK: - 按壓
+
+    /// 按下：整落牌沉下去
+    private func press() {
+        guard !isPressing else { return }
+        pressStartedAt = .now
+        // 加速壓下去，像被指頭按住
+        withAnimation(.easeIn(duration: Self.pressDuration)) { isPressing = true }
+    }
+
+    /// 手指離開：彈回來，是點擊的話順便換帳號
+    private func release() {
+        guard isPressing else { return }
+        let elapsed = pressStartedAt.map { Date.now.timeIntervalSince($0) } ?? Self.pressDuration
+        let remaining = Self.pressDuration - elapsed
+
+        // 一律排到下一輪 runloop 之後才收尾。onTapGesture 與 DragGesture 的 onEnded
+        // 在同一輪事件裡觸發、順序不保證，延後才能確定讀得到 pendingSwitch。
+        // 點得太快時順便補足沉下去剩餘的時間 — 沒補的話兩張卡還沒收斂到同一個位置
+        // 就交換，會被看見
+        Task { @MainActor in
+            if remaining > 0 {
+                try? await Task.sleep(for: .seconds(remaining))
+            }
+            settle()
+        }
+    }
+
+    private func settle() {
+        let next = pendingSwitch ? stack.account(after: frontAccount) : nil
+        pendingSwitch = false
+        // 阻尼壓低才彈得出來
+        withAnimation(.spring(response: 0.40, dampingFraction: 0.60)) {
+            if let next { frontAccount = next }
+            isPressing = false
+        }
+        pressStartedAt = nil
+    }
+
+    /// VoiceOver 的自訂動作：沒有按壓動畫可言，直接換
+    private func switchAccountDirectly() {
+        guard let next = stack.account(after: frontAccount) else { return }
+        withAnimation(.spring(response: 0.40, dampingFraction: 0.60)) {
+            frontAccount = next
+        }
+    }
+}
+
+/// 疊牌的按壓手勢。
+///
+/// 刻意不把整張卡包成 `Button`，有兩個 iOS 才有的理由：
+/// 1. 卡片裡的重置券徽章本身是 `Button`，巢狀 Button 在 iOS 收不到點擊。
+/// 2. `Button` 的 `isPressed` 在捲動把手勢帶走時同樣會轉 false，分不出
+///    「放開」與「取消」，捲過多帳號卡片就會誤換帳號。
+///
+/// 因此用 `DragGesture` 驅動沉下去／彈回來的動畫，另外用 `onTapGesture` 判斷
+/// 這次到底算不算點擊 — 捲動不會產生 tap，帳號就不會被換掉。
+private struct StackPressGestures: ViewModifier {
+    let enabled: Bool
+    let onPress: () -> Void
+    let onRelease: () -> Void
+    let onTap: () -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in onPress() }
+                        .onEnded { _ in onRelease() }
+                )
+                .onTapGesture { onTap() }
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - Provider Card View
 
 /// 版面對應 macOS 端的 `ProviderCard`：名稱列 + 5h／7d 兩條橫向進度列。
@@ -122,6 +273,11 @@ struct ProviderCardView: View {
     ]
 
     let provider: ProviderDisplayState
+    /// 目前看的是第幾個帳號，供指示點標示
+    var activeIndex: Int = 0
+    /// 疊在後面的卡片設為 false，避免蓋住最前面那張的觸控
+    var isInteractive: Bool = true
+
     @State private var showingResetCredits = false
 
     private var tint: Color? {
@@ -135,6 +291,10 @@ struct ProviderCardView: View {
                 Text(provider.displayName)
                     .font(.headline)
                     .fontDesign(.rounded)
+
+                if provider.accountCount > 1 {
+                    AccountDots(count: provider.accountCount, activeIndex: activeIndex)
+                }
 
                 if let accountLabel = provider.accountLabel {
                     accountTag(accountLabel)
@@ -159,8 +319,7 @@ struct ProviderCardView: View {
         }
         .padding(12)
         .background(cardBackground)
-        // 不用 .combine：重置券徽章是個按鈕，合併後就不再是獨立可觸達的控制項
-        .accessibilityElement(children: .contain)
+        .allowsHitTesting(isInteractive)
     }
 
     @ViewBuilder
@@ -220,6 +379,28 @@ struct ProviderCardView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(status.semanticColor.color.opacity(0.25), in: Capsule())
+    }
+}
+
+// MARK: - Account Dots
+
+/// 目前看的是第幾個帳號。
+/// 只靠明暗差在 4pt 的小圓點上看不出來（macOS 端實測），現用的是拉長的膠囊：
+/// 形狀差在任何尺寸都讀得到。
+private struct AccountDots: View {
+    let count: Int
+    let activeIndex: Int
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<count, id: \.self) { index in
+                let isActive = index == activeIndex
+                Capsule()
+                    .fill(Color.primary.opacity(isActive ? 0.85 : 0.22))
+                    .frame(width: isActive ? 10 : 4, height: 4)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 

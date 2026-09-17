@@ -27,6 +27,27 @@ public struct QuotaDisplayState: Sendable, Equatable {
         providers.filter(\.isDefaultAccount)
     }
 
+    /// 一個 provider 一落牌，維持 `providers` 的固定 provider 順序。
+    /// Dashboard 用這個做疊牌；缺席的 provider 會是只有一張佔位卡的單張牌。
+    public var providerStacks: [ProviderStackDisplayState] {
+        var order: [String] = []
+        var grouped: [String: [ProviderDisplayState]] = [:]
+        for provider in providers {
+            if grouped[provider.providerID] == nil {
+                order.append(provider.providerID)
+            }
+            grouped[provider.providerID, default: []].append(provider)
+        }
+        return order.map { providerID in
+            let accounts = grouped[providerID] ?? []
+            return ProviderStackDisplayState(
+                id: providerID,
+                displayName: accounts.first?.displayName ?? providerID,
+                accounts: accounts
+            )
+        }
+    }
+
     /// 面板標頭的「最後同步」時間，只到分鐘。與 macOS 端一致。
     public var lastSyncTimeText: String {
         guard let fetchedAt else { return "—" }

@@ -181,8 +181,8 @@ struct QuotaDisplayMappingTests {
         #expect(claudeRows[0].fiveHour.remainingPercent == 61.0)
         #expect(claudeRows[1].fiveHour.remainingPercent == 34.0)
 
-        // 多帳號才顯示帳號標籤；accountIndex 決定卡片底色，0 不上色
-        #expect(claudeRows[0].accountLabel == "main")
+        // 只有非預設帳號掛標籤；accountIndex 決定卡片底色，0 不上色
+        #expect(claudeRows[0].accountLabel == nil)
         #expect(claudeRows[0].accountIndex == 0)
         #expect(claudeRows[1].accountLabel == "work")
         #expect(claudeRows[1].accountIndex == 1)
@@ -190,6 +190,105 @@ struct QuotaDisplayMappingTests {
         // Widget 仍只拿預設帳號，維持固定三列
         #expect(state.defaultAccountProviders.count == 3)
         #expect(state.defaultAccountProviders.map(\.providerID) == ["codex", "claude", "agy"])
+    }
+
+    /// Dashboard 的疊牌：一個 provider 一落，provider 順序不變。
+    @Test func testProviderStacksGrouping() {
+        let response = QuotaResponse(
+            schemaVersion: 2,
+            generatedAt: fixedNow,
+            providers: [
+                "claude": [
+                    ProviderQuota(
+                        provider: "claude", account: "main", status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
+                    ),
+                    ProviderQuota(
+                        provider: "claude", account: "work", status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
+                    )
+                ]
+            ]
+        )
+
+        let stacks = QuotaDisplayState
+            .map(response: response, fetchedAt: fixedNow, now: fixedNow)
+            .providerStacks
+
+        #expect(stacks.map(\.id) == ["codex", "claude", "agy"])
+        #expect(stacks.map(\.displayName) == ["Codex", "Claude", "AGY"])
+
+        let claude = stacks.first { $0.id == "claude" }!
+        #expect(claude.isMultiAccount)
+        #expect(claude.accounts.map(\.account) == ["main", "work"])
+
+        // 缺席的 provider 是只有一張佔位卡的單張牌
+        let codex = stacks.first { $0.id == "codex" }!
+        #expect(!codex.isMultiAccount)
+        #expect(codex.accounts.count == 1)
+        #expect(codex.accounts[0].status == .noData)
+    }
+
+    /// 切換以 `account` 比對而非索引：伺服器重排陣列後，看的還是同一個帳號。
+    @Test func testStackOrderingAndNextAccount() {
+        let stack = ProviderStackDisplayState(
+            id: "claude",
+            displayName: "Claude",
+            accounts: ["main", "work", "side"].enumerated().map { index, account in
+                ProviderDisplayState(
+                    providerID: "claude",
+                    displayName: "Claude",
+                    account: account,
+                    accountIndex: index,
+                    accountCount: 3,
+                    status: .ok,
+                    lastSuccessAt: fixedNow,
+                    fiveHour: WindowDisplayState(remainingPercent: nil, resetsAt: nil),
+                    sevenDay: WindowDisplayState(remainingPercent: nil, resetsAt: nil)
+                )
+            }
+        )
+
+        // 尚未切換：main 在最前
+        #expect(stack.ordered(from: nil).map(\.account) == ["main", "work", "side"])
+        #expect(stack.account(after: nil) == "work")
+        #expect(stack.index(of: nil) == 0)
+
+        // 切到 work：循環排列，下一個是 side
+        #expect(stack.ordered(from: "work").map(\.account) == ["work", "side", "main"])
+        #expect(stack.account(after: "work") == "side")
+        #expect(stack.index(of: "work") == 1)
+
+        // 繞回 main
+        #expect(stack.account(after: "side") == "main")
+
+        // 帳號已從快照消失時退回原順序，不會卡住
+        #expect(stack.ordered(from: "gone").map(\.account) == ["main", "work", "side"])
+        #expect(stack.index(of: "gone") == 0)
+    }
+
+    /// 單張牌沒有下一個帳號，按壓不會換掉任何東西。
+    @Test func testSingleAccountStackHasNoNextAccount() {
+        let stack = ProviderStackDisplayState(
+            id: "codex",
+            displayName: "Codex",
+            accounts: [
+                ProviderDisplayState(
+                    providerID: "codex",
+                    displayName: "Codex",
+                    status: .ok,
+                    lastSuccessAt: fixedNow,
+                    fiveHour: WindowDisplayState(remainingPercent: nil, resetsAt: nil),
+                    sevenDay: WindowDisplayState(remainingPercent: nil, resetsAt: nil)
+                )
+            ]
+        )
+
+        #expect(!stack.isMultiAccount)
+        #expect(stack.account(after: nil) == nil)
+        #expect(stack.account(after: "main") == nil)
     }
 
     /// 單帳號 provider 不顯示帳號標籤，外觀與 schema v1 時相同。

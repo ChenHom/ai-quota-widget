@@ -157,7 +157,7 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 ### 5.2.1 帳號選取
 
 - 陣列順序為伺服器設定順序，`main` 保證排在最前，但消費端必須以 `account` 比對而非依賴索引。
-- App Dashboard 一個帳號一列，同一個 Provider 內沿用伺服器順序。
+- App Dashboard 一個 Provider 一落牌，同一個 Provider 內沿用伺服器順序。
 - Widget 只取預設帳號：先找 `account == "main"`，找不到才退回第一個元素。
 - 顯示層的列 id 必須是 `provider/account` 複合鍵；多列共用同一個 id 會讓 `ForEach` 的 `Identifiable` 撞號。
 
@@ -171,7 +171,9 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 
 JSON 缺少某個 Provider 時仍保留其顯示位置並顯示 `—`。JSON 出現未知 Provider 時，第一版忽略但不可造成解碼失敗。
 
-同一個 Provider 的多個帳號在 App Dashboard 上依序排在該 Provider 的位置，預設帳號（`main`）在最前。單帳號時不顯示帳號標籤，外觀與 schema v1 時相同。
+同一個 Provider 的多個帳號在 App Dashboard 上疊成一落牌，佔該 Provider 的一個位置：一次顯示一張，按壓卡片切換到下一個帳號，指示點標示目前看第幾張。預設帳號（`main`）在最前，且沿用 Provider 原名不加標籤；其餘帳號加上帳號標籤與底色。單帳號時退化成一張普通卡片，外觀與 schema v1 時相同。
+
+切換必須以 `account` 比對而非陣列索引：伺服器每次快照都可能重排，使用者看的必須還是同一個帳號；該帳號從快照消失時退回預設帳號。
 
 ## 6. Endpoint 與設定規格
 

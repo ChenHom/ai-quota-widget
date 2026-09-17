@@ -5,7 +5,28 @@
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
 
-## 2026-09-17 決策：App Dashboard 版面對齊 macOS 端，多帳號一列一張卡
+## 2026-09-17 決策：Dashboard 多帳號改用疊牌按壓切換，與 macOS 端一致
+
+**背景**：前一則決策把多帳號攤平成一個帳號一張卡片。實際比對後決定回到 macOS 端的疊牌：卡片疊在同一個位置，按下去整落沉到同一個位置，放開彈回時已經換成下一個帳號 — 交換就藏在收斂的那一刻。攤平的版本被否決。
+
+**處理方式**：
+
+- 新增 `ProviderStackDisplayState`，`ordered(from:)`／`account(after:)`／`index(of:)` 與 macOS 端的 `ProviderStack` 同一套邏輯：一律以 `account` 比對而非索引，因為伺服器每次快照都可能重排陣列。
+- `QuotaDisplayState.providerStacks` 把攤平的 `providers` 依 `providerID` 分組，維持固定的 provider 順序。缺席的 provider 是只有一張佔位卡的單張牌。
+- 動畫參數沿用 macOS 端的數值：`peek` 9pt、`shrink` 0.045、`maxVisibleDepth` 2、`pressDuration` 0.13s、`pressLevel` 0.5，彈回是 `.spring(response: 0.40, dampingFraction: 0.60)`。放開得太快時補足剩餘的沉下時間，否則兩張卡還沒收斂到同一個位置就交換，會被看見。
+- 帳號標籤規則改回 macOS：只有非預設帳號掛標籤，`main` 沿用 provider 原名。疊牌一次只看得到一張卡，哪一張是 main 由指示點與底色交代。
+- 加上 `AccountDots` 指示點。沿用 macOS 的結論：4pt 小圓點只靠明暗差看不出來，改用「作用中拉長成 10pt 膠囊」的形狀差。
+
+**兩個 macOS 沒有、iOS 才有的問題**：
+
+1. **不能把整張卡包成 `Button`**。`Button` 的 `isPressed` 在捲動把手勢帶走時同樣會轉 false，分不出「放開」與「取消」 — 照 macOS 的寫法，使用者每次捲過多帳號卡片都會誤換帳號。改用 `DragGesture(minimumDistance: 0)` 驅動沉下／彈回的動畫，另外用 `onTapGesture` 判斷這次算不算點擊：捲動不會產生 tap，帳號就不會被換掉。
+2. **巢狀 `Button` 在 iOS 收不到點擊**。卡片裡的重置券徽章本身是 `Button`，包在外層 `Button` 的 label 裡會失效。用手勢而非 `Button` 同時解掉這一點。副作用是點徽章時外層的 `DragGesture` 仍會觸發一次沉下／彈回的小動畫（但不會換帳號），可接受。
+
+另外：收尾一律排到下一輪 runloop 之後才做。`onTapGesture` 與 `DragGesture` 的 `onEnded` 在同一輪事件裡觸發、順序不保證，延後才能確定讀得到「這次是不是點擊」。疊在後面的卡片加 `allowsHitTesting(false)`，否則它們的徽章會搶走最前面那張的觸控。
+
+**驗證**：本次在無 Swift 工具鏈的環境完成，**未經編譯或測試執行**。上面兩個 iOS 差異是靜態推理的結果，不是實測 — 手勢行為必須在實機或模擬器上確認，特別是「捲動經過多帳號卡片不會換帳號」與「點重置券徽章會開 popover」這兩條。測試只涵蓋得到純資料的部分：疊牌分組、循環排列、以 `account` 比對、單張牌沒有下一個帳號。
+
+## 2026-09-17 決策：App Dashboard 版面對齊 macOS 端（多帳號呈現已由上一則取代）
 
 **背景**：macOS 端（[ai-quota](https://github.com/ChenHom/ai-quota)）的 `QuotaPanel` 已改成「名稱列 + 5h／7d 兩條橫向進度列」的緊湊卡片，並支援多帳號。iPhone 端的 Dashboard 還停在雙圓環版面，兩邊看起來像兩個產品；schema v2 帶進來的第二個 claude 帳號在 iPhone 上也完全看不到。
 
@@ -15,7 +36,7 @@
 - 新增標頭卡片顯示「AI USAGE ／ 最後同步：HH:mm」。這個資訊 iPhone 端原本完全沒顯示（`lastSyncText` 存在但沒有人用）。macOS 的重新整理按鈕在 iOS 由既有的下拉重新整理取代，只在載入時顯示轉圈。
 - 狀態文案對齊 macOS：只分「正常／資料延遲／暫無資料」。原本 iPhone 端會把 collector 的原始 status 值（例如 `rate_limited`）直接顯示給使用者，`ProviderStatus` 改為 `.ok`／`.delayed(原始值)`／`.noData`，原始值保留在關聯值裡供診斷。
 - **進度列刻意不照搬 macOS 的白色**。macOS 用白色是為了讓玻璃島在任意桌布上都可讀；iOS 卡片是實心底色，白色進度列會看不見。這裡沿用既有的 `ProgressBarView` 與語意色階，順帶讓 App 與 Widget 的色階一致（此前 App 用圓環、Widget 用色條）。
-- 多帳號改成一個帳號一張卡片，而不是 macOS 的疊牌按壓切換。macOS 疊牌是因為面板固定維持三張卡片、沒有空間往下長；Dashboard 是 ScrollView，沒有這個限制，攤平可讀性更好，也避開按壓手勢與捲動的衝突。非預設帳號的卡片用與 macOS 相同的三組色相（紫／青／粉）上底色並加帳號標籤；因為每個帳號都看得到，macOS 用來指示「現在看第幾張」的圓點就不需要了。
+- ~~多帳號改成一個帳號一張卡片，而不是 macOS 的疊牌按壓切換。~~（已由 2026-09-17 的疊牌決策取代）原本的理由：macOS 疊牌是因為面板固定維持三張卡片、沒有空間往下長；Dashboard 是 ScrollView，沒有這個限制，攤平可讀性更好，也避開按壓手勢與捲動的衝突。非預設帳號的卡片用與 macOS 相同的三組色相（紫／青／粉）上底色並加帳號標籤；因為每個帳號都看得到，macOS 用來指示「現在看第幾張」的圓點就不需要了。
 - `ProviderDisplayState.id` 改為 `provider/account` 複合鍵，並新增 `providerID`。`DashboardView` 與 `MediumQuotaWidgetView` 都用 `ForEach` 吃 `Identifiable`，兩列共用同一個 id 不會報錯，只會安靜地畫錯。
 
 **Widget 維持不變**：`QuotaDisplayState` 新增 `defaultAccountProviders`，`MediumQuotaWidgetView` 改用它，維持固定三列。`systemMedium` 的垂直空間放不下第四列（預設字級勉強、XXL／AX1 幾乎確定溢出），Widget 的多帳號版面尚未定案，不讓它跟著 Dashboard 一起變。
