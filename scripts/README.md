@@ -61,7 +61,8 @@ cat ~/Library/Application\ Support/AIQuota-Redeploy/last-success   # epoch 秒�
   xcodebuild build -project AIQuota.xcodeproj -scheme AIQuota -configuration Debug \
     -destination "generic/platform=iOS" -derivedDataPath build/DerivedData \
     -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
-    INFOPLIST_KEY_AIQuotaCommit="$(git rev-parse --short HEAD)"
+    INFOPLIST_KEY_AIQuotaCommit="$(git rev-parse --short HEAD)" \
+    MARKETING_VERSION="$(git rev-parse --short HEAD)"
   ```
   如果之後這個自動化開始莫名其妙失敗，先打開 Xcode 檢查 Accounts 頁面的登入狀態。
 - **`do shell script` 的執行環境 PATH 比較精簡**。`xcodebuild`/`xcrun` 通常本來就
@@ -72,14 +73,33 @@ cat ~/Library/Application\ Support/AIQuota-Redeploy/last-success   # epoch 秒�
 ## 建置識別（commit SHA）
 
 App 標頭「最後同步」那一行的右側會顯示 build 當下的 commit SHA，用來分辨手機上跑的
-到底是哪一版。值是 build 時以 `INFOPLIST_KEY_AIQuotaCommit=<sha>` 寫進產生的
-Info.plist，App 用 `Bundle.main.object(forInfoDictionaryKey:)` 讀出來。
+到底是哪一版。後綴 `+` 表示 build 當下工作區還有未提交的改動。
 
-後綴 `+` 表示 build 當下工作區還有未提交的改動。**直接在 Xcode 按 Run 不會帶這個設定**，
-此時顯示 `dev` — 這是預期行為，不是錯誤。手動下指令時要帶：
+build 時同時帶兩個設定，App 端（`AppConfiguration.buildLabel`）依序讀：
+
+| 順序 | Info.plist key | 來源設定 | 備註 |
+|---|---|---|---|
+| 1 | `AIQuotaCommit` | `INFOPLIST_KEY_AIQuotaCommit` | `INFOPLIST_KEY_` 前綴官方只保證支援它已知的 key，自訂 key 可能被靜默忽略 |
+| 2 | `CFBundleShortVersionString` | `MARKETING_VERSION` | 標準設定，一定會進 Info.plist |
+
+之所以兩個都帶，是因為只用第 1 個實測過顯示 `dev`（值沒進 plist）。第 2 個是保險。
+`MARKETING_VERSION` 不帶 `+` 後綴 — `CFBundleShortVersionString` 對特殊字元比較敏感。
+
+**直接在 Xcode 按 Run 不會帶任何一個**，此時顯示 `project.yml` 裡的 `MARKETING_VERSION`
+（目前是 `1.1`）。這是預期行為。
+
+手動下指令時兩個都要帶：
 
 ```bash
-INFOPLIST_KEY_AIQuotaCommit="$(git rev-parse --short HEAD)"
+INFOPLIST_KEY_AIQuotaCommit="$(git rev-parse --short HEAD)" \
+MARKETING_VERSION="$(git rev-parse --short HEAD)"
+```
+
+要確認值真的有進去，檢查建置產物的 Info.plist：
+
+```bash
+plutil -p build/DerivedData/Build/Products/Debug-iphoneos/AIQuota.app/Info.plist \
+  | grep -E "AIQuotaCommit|CFBundleShortVersionString"
 ```
 
 ## 狀態／log 位置

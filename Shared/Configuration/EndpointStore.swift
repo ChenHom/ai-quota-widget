@@ -8,17 +8,25 @@ public enum AppGroupConstants {
     public static let cacheFileName = "cached_quota.json"
 }
 
-/// 建置識別。
+/// 建置識別，顯示在 App 標頭右上角，用來分辨手機上跑的是哪一版。
 ///
-/// commit SHA 由 build 指令以 `INFOPLIST_KEY_AIQuotaCommit=$(git rev-parse --short HEAD)`
-/// 寫進產生的 Info.plist（見 `scripts/redeploy.sh`）。直接在 Xcode 按 Run 不會帶這個設定，
-/// 此時顯示「dev」。後綴 `+` 表示 build 當下工作區還有未提交的改動。
+/// 依序嘗試兩個來源，因為兩種寫入方式都不是每個 Xcode 版本都吃：
+/// 1. `AIQuotaCommit` — build 時以 `INFOPLIST_KEY_AIQuotaCommit=<sha>` 寫入。
+///    這個前綴官方只保證支援它已知的 key，自訂 key 可能被靜默忽略。
+/// 2. `CFBundleShortVersionString` — 也就是 `MARKETING_VERSION`，這是標準設定，
+///    一定會進 Info.plist；`scripts/redeploy.sh` 會把它覆寫成 commit SHA。
+///
+/// 兩個都讀不到（例如直接在 Xcode 按 Run）就顯示 project.yml 裡的版本號。
 public enum AppConfiguration {
-    public static let commitLabel: String = {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "AIQuotaCommit") as? String,
-              !value.trimmingCharacters(in: .whitespaces).isEmpty
-        else { return "dev" }
-        return value
+    public static let buildLabel: String = {
+        let info = Bundle.main.infoDictionary
+        for key in ["AIQuotaCommit", "CFBundleShortVersionString"] {
+            if let value = info?[key] as? String,
+               !value.trimmingCharacters(in: .whitespaces).isEmpty {
+                return value
+            }
+        }
+        return "dev"
     }()
 }
 

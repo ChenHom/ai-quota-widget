@@ -53,9 +53,14 @@ fi
 
 log "距離上次成功部署 ${age_days} 天，開始重新 build + 安裝"
 
-# 建置識別：寫進 Info.plist，App 標頭右側會顯示，用來分辨手機上跑的是哪一版。
-# 後綴 + 表示 build 當下工作區還有未提交的改動（與 macOS 端的口徑一致）
+# 建置識別：寫進 Info.plist，App 標頭右上角會顯示，用來分辨手機上跑的是哪一版。
+# 後綴 + 表示 build 當下工作區還有未提交的改動（與 macOS 端的口徑一致）。
+#
+# 兩個設定都帶：INFOPLIST_KEY_ 的自訂 key 不是每個 Xcode 版本都吃，
+# MARKETING_VERSION 則是標準設定，一定會進 Info.plist。App 端優先讀前者。
+# MARKETING_VERSION 不帶 + 後綴：CFBundleShortVersionString 對特殊字元比較敏感。
 COMMIT=$(git -C "$PROJECT_DIR" rev-parse --short HEAD 2>/dev/null || echo dev)
+COMMIT_PLAIN="$COMMIT"
 if ! git -C "$PROJECT_DIR" diff --quiet HEAD 2>/dev/null; then
     COMMIT="${COMMIT}+"
 fi
@@ -69,7 +74,8 @@ build_output=$(xcodebuild build \
     -derivedDataPath "$DERIVED_DATA_PATH" \
     -allowProvisioningUpdates \
     -allowProvisioningDeviceRegistration \
-    INFOPLIST_KEY_AIQuotaCommit="$COMMIT" 2>&1)
+    INFOPLIST_KEY_AIQuotaCommit="$COMMIT" \
+    MARKETING_VERSION="$COMMIT_PLAIN" 2>&1)
 build_status=$?
 echo "$build_output" >> "$LOG_FILE"
 

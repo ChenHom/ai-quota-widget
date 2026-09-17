@@ -34,7 +34,9 @@ App 標頭「最後同步」那一行的右側顯示 build 當下的 commit SHA�
 
 值由 build 指令以 `INFOPLIST_KEY_AIQuotaCommit=<sha>` 寫進產生的 Info.plist，`AppConfiguration.commitLabel` 用 `Bundle.main.object(forInfoDictionaryKey:)` 讀出來，讀不到就顯示 `dev`。`scripts/redeploy.sh` 已經帶這個設定。
 
-**為什麼用這個做法**：App target 是 `GENERATE_INFOPLIST_FILE: true`，沒有可以直接編輯的 Info.plist；改用 Run Script build phase 要動 `project.yml` 並重新產生 pbxproj。`INFOPLIST_KEY_` 前綴可以直接從 xcodebuild 命令列帶進去，專案檔完全不用改，而且讀不到時會退回 `dev`，失敗也不會讓建置壞掉。
+**為什麼用這個做法**：App target 是 `GENERATE_INFOPLIST_FILE: true`，沒有可以直接編輯的 Info.plist；改用 Run Script build phase 要動 `project.yml` 並重新產生 pbxproj。`INFOPLIST_KEY_` 前綴可以直接從 xcodebuild 命令列帶進去，專案檔完全不用改。
+
+**後續修正（同日）**：只用 `INFOPLIST_KEY_AIQuotaCommit` 實測在實機上顯示 `dev` — 值沒有進到 Info.plist。`INFOPLIST_KEY_` 前綴官方只保證支援它已知的 key（`NSCameraUsageDescription` 這類），自訂的 key 會被靜默忽略。改成同時帶 `MARKETING_VERSION=<sha>`：它會寫進 `CFBundleShortVersionString`，是標準設定，一定會進 plist。`AppConfiguration.buildLabel` 依序讀 `AIQuotaCommit` → `CFBundleShortVersionString`，兩個都沒有才顯示 `dev`。兩個都帶而不是直接換掉，是因為還沒確認到底是「自訂 key 被忽略」還是「當時指令沒帶參數」，留著成本是零。
 
 `AppConfiguration` 放在 `Shared/Configuration/EndpointStore.swift`（`AppGroupConstants` 旁邊）而不是新開檔案：committed 的 pbxproj 是逐檔列舉來源的，新增檔案要手動補 8 行專案設定，風險大於收益。
 

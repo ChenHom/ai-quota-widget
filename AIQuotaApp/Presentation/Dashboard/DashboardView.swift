@@ -83,7 +83,7 @@ struct DashboardView: View {
                 Spacer(minLength: 8)
 
                 // 建置識別：分辨手機上跑的到底是哪一版
-                Text(AppConfiguration.commitLabel)
+                Text(AppConfiguration.buildLabel)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
