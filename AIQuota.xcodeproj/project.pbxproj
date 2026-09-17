@@ -29,7 +29,6 @@
 		5B67490F87566D926CDC7731 /* QuotaDisplayMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F23D9E1FBAD9A46C3DF1478E /* QuotaDisplayMappingTests.swift */; };
 		5DD801A3B0DF4EB08AED5B8E /* EndpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235FE85C8083DB001B9B646D /* EndpointStore.swift */; };
 		5EDC764AFE4172ACEA673A41 /* quota_unsupported_schema.json in Resources */ = {isa = PBXBuildFile; fileRef = 1B2D6C34A3A30063A8BCDFC2 /* quota_unsupported_schema.json */; };
-		6015C041116D00AF15306892 /* ProgressRingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43C4D68658AC8A9EC49721C /* ProgressRingView.swift */; };
 		67CD027EB6BBD8FE6275A0F8 /* AIQuotaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7E64FE9B6F2966FFE6D02 /* AIQuotaApp.swift */; };
 		6F6D03A39D4517D52AEFBC96 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBB08B8B5C8F9627998D931B /* MockData.swift */; };
 		748AF8C8EE761EB4A78822D0 /* Clock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD52A6402E74C7C8E83579A /* Clock.swift */; };
@@ -39,12 +38,10 @@
 		8EE1847CD1DF7065FA8E8336 /* SemanticColor+SwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D4BD28B9DB7B12B8A0EA0A /* SemanticColor+SwiftUI.swift */; };
 		9160F6E6D14CA3C1933B57CD /* ProgressBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6F2F25D2DA473327B691E6 /* ProgressBarView.swift */; };
 		98B72F5B1196475CAB2D49DB /* AIQuotaWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 76D9EEAA0A27FF50A5E170F4 /* AIQuotaWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		A1C9FD92016025298A2E9D7F /* ProgressRingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43C4D68658AC8A9EC49721C /* ProgressRingView.swift */; };
 		A35FA204FE7FD294F4B167C7 /* ProviderDisplayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFFBDD630E97D259B9546D3 /* ProviderDisplayState.swift */; };
 		ADAC6F55017446E5BEAECAC2 /* DateDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C120FE6FD2D990E7C026347 /* DateDecodingTests.swift */; };
 		B677342FE67768CE3C107F8C /* APIClientErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888B6490C70B92601A71E6AE /* APIClientErrorTests.swift */; };
 		BB5334AD25B89FDA8E460AAD /* QuotaDisplayState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A5634352A2624C583FA24E /* QuotaDisplayState.swift */; };
-		BC3A45AACDA3B9DC1693B738 /* ProgressRingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43C4D68658AC8A9EC49721C /* ProgressRingView.swift */; };
 		BCB79CD4FF2960CB69396FBB /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBB08B8B5C8F9627998D931B /* MockData.swift */; };
 		BD0BAFF2F5AB64DA6E6C86AD /* QuotaEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A73BF77960D2404DAD6A41 /* QuotaEntry.swift */; };
 		BFEB1888A467AAA8F5316BB0 /* EndpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235FE85C8083DB001B9B646D /* EndpointStore.swift */; };
@@ -141,7 +138,6 @@
 		CC6301FDA02512028BAEE8BD /* AIQuotaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AIQuotaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9D4BD28B9DB7B12B8A0EA0A /* SemanticColor+SwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SemanticColor+SwiftUI.swift"; sourceTree = "<group>"; };
 		DF0AE118BDFFF131424CFE9E /* quota_optional.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = quota_optional.json; sourceTree = "<group>"; };
-		E43C4D68658AC8A9EC49721C /* ProgressRingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressRingView.swift; sourceTree = "<group>"; };
 		E4BB0DA865B7ABFA4B57D043 /* quota_missing_provider.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = quota_missing_provider.json; sourceTree = "<group>"; };
 		F23D9E1FBAD9A46C3DF1478E /* QuotaDisplayMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaDisplayMappingTests.swift; sourceTree = "<group>"; };
 		F80CBEEA8F415E4D677568A2 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -175,7 +171,6 @@
 				66218590FB94D55ADD2C14A2 /* FreshnessState.swift */,
 				CBB08B8B5C8F9627998D931B /* MockData.swift */,
 				FD6F2F25D2DA473327B691E6 /* ProgressBarView.swift */,
-				E43C4D68658AC8A9EC49721C /* ProgressRingView.swift */,
 				1CFFBDD630E97D259B9546D3 /* ProviderDisplayState.swift */,
 				A2A5634352A2624C583FA24E /* QuotaDisplayState.swift */,
 				D9D4BD28B9DB7B12B8A0EA0A /* SemanticColor+SwiftUI.swift */,
@@ -474,7 +469,6 @@
 				03580EE318D04EE9D73CC1AF /* FreshnessState.swift in Sources */,
 				374841FB8C46469176AFF1ED /* MockData.swift in Sources */,
 				D6A96425FFCD400BE83FF113 /* ProgressBarView.swift in Sources */,
-				BC3A45AACDA3B9DC1693B738 /* ProgressRingView.swift in Sources */,
 				A35FA204FE7FD294F4B167C7 /* ProviderDisplayState.swift in Sources */,
 				0FF42FC96655A1922AE29471 /* QuotaAPIClient.swift in Sources */,
 				EEB58ADB1F0A2F671A9121D9 /* QuotaCache.swift in Sources */,
@@ -500,7 +494,6 @@
 				11FB782077FC7118633DFDA9 /* MediumQuotaWidgetView.swift in Sources */,
 				6F6D03A39D4517D52AEFBC96 /* MockData.swift in Sources */,
 				9160F6E6D14CA3C1933B57CD /* ProgressBarView.swift in Sources */,
-				6015C041116D00AF15306892 /* ProgressRingView.swift in Sources */,
 				3860052F7EA100FA81FEBD50 /* ProviderDisplayState.swift in Sources */,
 				E160C1B2A34742155F54F49D /* QuotaAPIClient.swift in Sources */,
 				D3F7AA3A0CD44C292CAAD557 /* QuotaCache.swift in Sources */,
@@ -526,7 +519,6 @@
 				109A199625C5CD2B39E0BA4C /* FreshnessState.swift in Sources */,
 				BCB79CD4FF2960CB69396FBB /* MockData.swift in Sources */,
 				FD9AEFB0CE454CDD2C53E800 /* ProgressBarView.swift in Sources */,
-				A1C9FD92016025298A2E9D7F /* ProgressRingView.swift in Sources */,
 				E4929CCC42963840A35671CE /* ProviderDisplayState.swift in Sources */,
 				49732D1DF492D5C12BC020B7 /* QuotaAPIClient.swift in Sources */,
 				44DE2A7F7D39C07AD65EE8AB /* QuotaCache.swift in Sources */,

@@ -5,6 +5,14 @@
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
 
+## 2026-09-17 清理：移除 `ProgressRingView`
+
+Dashboard 改用橫向進度列後，`Shared/Presentation/ProgressRingView.swift` 就沒有任何呼叫端了 — 它原本只服務雙圓環版面。
+
+一併從 `AIQuota.xcodeproj/project.pbxproj` 移除 8 行（3 個 target 的 `PBXBuildFile`、1 個 `PBXFileReference`、1 個 `PBXGroup` 子項、3 個 `PBXSourcesBuildPhase` 項目）。`project.yml` 是以資料夾（`- path: Shared`）納入來源，所以重跑 `xcodegen` 也會得到同樣結果；直接改 pbxproj 是為了不強迫每個人在這個 commit 之後先跑一次 xcodegen 才能建置。
+
+移除前已確認四個相關 UUID 只出現在這 8 行裡，沒有其他地方參照。
+
 ## 2026-09-17 修正：Widget 補上重置券 `+N` 徽章
 
 **現象**：macOS 面板與 App Dashboard 都會在 Provider 名稱旁顯示重置券的 `+N` 徽章，只有 Widget 沒有 — `MediumQuotaWidgetView` 從來沒有引用過 `resetCredits`。這不是回歸，是 2026-08-24 加徽章時就只做了 App 端。
@@ -59,7 +67,7 @@
 
 **驗證**：本次在無 Swift 工具鏈的環境完成，**未經編譯或測試執行**。已完成的檢查：括號平衡掃描、全專案 grep 確認 `ProviderStatus`／`ProviderDisplayState` 的呼叫端都已更新。測試已補上一列一帳號、單帳號不顯示標籤、缺席 Provider 佔位、以及 `defaultAccountProviders` 仍為三列等案例。需在 Xcode 跑過 `xcodebuild test` 並實機看過版面才算驗證完成。
 
-**待處理**：`Shared/Presentation/ProgressRingView.swift` 在這次改動後沒有任何呼叫端，尚未刪除。
+**後續**：`Shared/Presentation/ProgressRingView.swift` 在這次改動後沒有任何呼叫端，已於同一分支移除（見下方 2026-09-17 的清理記錄）。
 
 ## 2026-09-17 決策：跟進 collector schema v2，資料層先完整支援多帳號、顯示層暫時只取 `main`
 
