@@ -159,9 +159,9 @@ struct APIClientErrorTests {
         let state = QuotaDisplayState.map(response: response, fetchedAt: now, now: now)
 
         // 固定順序: codex, claude, agy
-        #expect(state.providers[0].id == "codex")
-        #expect(state.providers[1].id == "claude")
-        #expect(state.providers[2].id == "agy")
+        #expect(state.providers[0].providerID == "codex")
+        #expect(state.providers[1].providerID == "claude")
+        #expect(state.providers[2].providerID == "agy")
 
         // claude 缺失但仍保留位置
         #expect(state.providers[1].fiveHour.remainingPercent == nil)

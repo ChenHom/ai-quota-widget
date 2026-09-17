@@ -72,7 +72,7 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 - Live Activity。
 - Push-based Widget update。
 - 多 endpoint。
-- 多帳號的顯示版面（schema v2 起資料層已完整解碼每個帳號，顯示層暫時只呈現預設帳號 `main`；版面定案前不列為第一版範圍）。
+- Widget 的多帳號版面（`systemMedium` 放不下第四列，Widget 只顯示各 Provider 的預設帳號；App Dashboard 已顯示所有帳號）。
 - 保證固定時間或每 5 分鐘更新 Widget。
 - Widget 中的完整錯誤診斷。
 
@@ -157,8 +157,9 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 ### 5.2.1 帳號選取
 
 - 陣列順序為伺服器設定順序，`main` 保證排在最前，但消費端必須以 `account` 比對而非依賴索引。
-- 顯示層目前只取預設帳號：先找 `account == "main"`，找不到才退回第一個元素。
-- 其餘帳號完整保留在解碼結果中，供多帳號版面定案後使用。
+- App Dashboard 一個帳號一列，同一個 Provider 內沿用伺服器順序。
+- Widget 只取預設帳號：先找 `account == "main"`，找不到才退回第一個元素。
+- 顯示層的列 id 必須是 `provider/account` 複合鍵；多列共用同一個 id 會讓 `ForEach` 的 `Identifiable` 撞號。
 
 ### 5.3 Provider 順序
 
@@ -169,6 +170,8 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 3. `agy` → `AGY`
 
 JSON 缺少某個 Provider 時仍保留其顯示位置並顯示 `—`。JSON 出現未知 Provider 時，第一版忽略但不可造成解碼失敗。
+
+同一個 Provider 的多個帳號在 App Dashboard 上依序排在該 Provider 的位置，預設帳號（`main`）在最前。單帳號時不顯示帳號標籤，外觀與 schema v1 時相同。
 
 ## 6. Endpoint 與設定規格
 

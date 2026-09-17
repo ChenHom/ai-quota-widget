@@ -5,6 +5,25 @@
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
 
+## 2026-09-17 決策：App Dashboard 版面對齊 macOS 端，多帳號一列一張卡
+
+**背景**：macOS 端（[ai-quota](https://github.com/ChenHom/ai-quota)）的 `QuotaPanel` 已改成「名稱列 + 5h／7d 兩條橫向進度列」的緊湊卡片，並支援多帳號。iPhone 端的 Dashboard 還停在雙圓環版面，兩邊看起來像兩個產品；schema v2 帶進來的第二個 claude 帳號在 iPhone 上也完全看不到。
+
+**處理方式**：
+
+- 卡片結構照搬 macOS 的 `ProviderCard`：名稱（headline）· 帳號標籤 · `+N` 重置券徽章 · Spacer · 最後成功時間 · 狀態膠囊，下面接 `5h`／`7d` 兩條 `UsageRow`。欄寬也沿用同一組數字（標籤 24pt、百分比 38pt、重置時間 116pt）。
+- 新增標頭卡片顯示「AI USAGE ／ 最後同步：HH:mm」。這個資訊 iPhone 端原本完全沒顯示（`lastSyncText` 存在但沒有人用）。macOS 的重新整理按鈕在 iOS 由既有的下拉重新整理取代，只在載入時顯示轉圈。
+- 狀態文案對齊 macOS：只分「正常／資料延遲／暫無資料」。原本 iPhone 端會把 collector 的原始 status 值（例如 `rate_limited`）直接顯示給使用者，`ProviderStatus` 改為 `.ok`／`.delayed(原始值)`／`.noData`，原始值保留在關聯值裡供診斷。
+- **進度列刻意不照搬 macOS 的白色**。macOS 用白色是為了讓玻璃島在任意桌布上都可讀；iOS 卡片是實心底色，白色進度列會看不見。這裡沿用既有的 `ProgressBarView` 與語意色階，順帶讓 App 與 Widget 的色階一致（此前 App 用圓環、Widget 用色條）。
+- 多帳號改成一個帳號一張卡片，而不是 macOS 的疊牌按壓切換。macOS 疊牌是因為面板固定維持三張卡片、沒有空間往下長；Dashboard 是 ScrollView，沒有這個限制，攤平可讀性更好，也避開按壓手勢與捲動的衝突。非預設帳號的卡片用與 macOS 相同的三組色相（紫／青／粉）上底色並加帳號標籤；因為每個帳號都看得到，macOS 用來指示「現在看第幾張」的圓點就不需要了。
+- `ProviderDisplayState.id` 改為 `provider/account` 複合鍵，並新增 `providerID`。`DashboardView` 與 `MediumQuotaWidgetView` 都用 `ForEach` 吃 `Identifiable`，兩列共用同一個 id 不會報錯，只會安靜地畫錯。
+
+**Widget 維持不變**：`QuotaDisplayState` 新增 `defaultAccountProviders`，`MediumQuotaWidgetView` 改用它，維持固定三列。`systemMedium` 的垂直空間放不下第四列（預設字級勉強、XXL／AX1 幾乎確定溢出），Widget 的多帳號版面尚未定案，不讓它跟著 Dashboard 一起變。
+
+**驗證**：本次在無 Swift 工具鏈的環境完成，**未經編譯或測試執行**。已完成的檢查：括號平衡掃描、全專案 grep 確認 `ProviderStatus`／`ProviderDisplayState` 的呼叫端都已更新。測試已補上一列一帳號、單帳號不顯示標籤、缺席 Provider 佔位、以及 `defaultAccountProviders` 仍為三列等案例。需在 Xcode 跑過 `xcodebuild test` 並實機看過版面才算驗證完成。
+
+**待處理**：`Shared/Presentation/ProgressRingView.swift` 在這次改動後沒有任何呼叫端，尚未刪除。
+
 ## 2026-09-17 決策：跟進 collector schema v2，資料層先完整支援多帳號、顯示層暫時只取 `main`
 
 **背景**：collector 自 2026-09-16 10:51 (+08:00) 起只輸出 schema v2（見 [public-schema-v2.md](https://github.com/ChenHom/ai-quota/blob/main/public-schema-v2.md)），v1 不再提供。v2 把 `providers.<key>` 從單一物件改成「一帳號一元素」的陣列，元素新增 `account`，`lastSuccessAt` 改為可為 null，另外多了 `confidence`／`source`／`usedPercent`。目前 `claude` 有 `main`、`work` 兩個帳號。

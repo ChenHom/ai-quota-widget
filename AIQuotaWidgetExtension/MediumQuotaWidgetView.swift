@@ -26,9 +26,11 @@ struct MediumQuotaWidgetView: View {
                 freshnessIndicator(entry.displayState.freshness)
             }
             
-            // 3個 Provider 的列表
+            // 3個 Provider 的列表。
+            // 刻意只取預設帳號：systemMedium 的垂直空間放不下第四列，
+            // 多帳號要怎麼在 Widget 呈現尚未定案（App Dashboard 已顯示所有帳號）
             VStack(spacing: 10) {
-                ForEach(entry.displayState.providers) { provider in
+                ForEach(entry.displayState.defaultAccountProviders) { provider in
                     providerRow(provider)
                 }
             }
@@ -125,11 +127,7 @@ struct MediumQuotaWidgetView: View {
             }
             .accessibilityElement(children: .ignore)
         }
-        .accessibilityLabel(
-            "\(provider.displayName)，" +
-            "5小時額度\(provider.fiveHour.percentVoiceOverText)，" +
-            "7天額度\(provider.sevenDay.percentVoiceOverText)。"
-        )
+        .accessibilityLabel(provider.voiceOverLabel)
     }
     
     private func barColor(_ percent: Double) -> Color {

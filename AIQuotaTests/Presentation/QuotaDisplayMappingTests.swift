@@ -37,7 +37,7 @@ struct QuotaDisplayMappingTests {
         #expect(state.providers.count == 3) // 固定 3 個 Provider
         
         // 檢查 Codex
-        let codex = state.providers.first(where: { $0.id == "codex" })!
+        let codex = state.providers.first(where: { $0.providerID == "codex" })!
         #expect(codex.displayName == "Codex")
         #expect(codex.status == .ok)
         #expect(codex.fiveHour.percentText == "82%")
@@ -45,9 +45,9 @@ struct QuotaDisplayMappingTests {
         #expect(codex.sevenDay.resetsAtText == "—")
         
         // 檢查 Claude (缺失，應該是佔位符)
-        let claude = state.providers.first(where: { $0.id == "claude" })!
+        let claude = state.providers.first(where: { $0.providerID == "claude" })!
         #expect(claude.displayName == "Claude")
-        #expect(claude.status == .unknown("沒有資料"))
+        #expect(claude.status == .noData)
         #expect(claude.fiveHour.remainingPercent == nil)
         #expect(claude.fiveHour.percentText == "—")
     }
@@ -100,13 +100,13 @@ struct QuotaDisplayMappingTests {
         
         let state = QuotaDisplayState.map(response: response, fetchedAt: fixedNow, now: fixedNow)
         
-        let codex = state.providers.first(where: { $0.id == "codex" })!
+        let codex = state.providers.first(where: { $0.providerID == "codex" })!
         #expect(codex.resetCredits?.badgeText == "+2")
         // 2026-07-16T12:00:00Z 固定以 Asia/Taipei（+8）顯示，不隨裝置時區改變
         #expect(codex.resetCredits?.expiryTexts == ["07/16 20:00", "—"])
         
-        #expect(state.providers.first(where: { $0.id == "claude" })!.resetCredits == nil)
-        #expect(state.providers.first(where: { $0.id == "agy" })!.resetCredits == nil)
+        #expect(state.providers.first(where: { $0.providerID == "claude" })!.resetCredits == nil)
+        #expect(state.providers.first(where: { $0.providerID == "agy" })!.resetCredits == nil)
     }
     
     @Test func testPercentClippingAndOptionalMapping() {
@@ -133,15 +133,14 @@ struct QuotaDisplayMappingTests {
         
         #expect(state.freshness == .delayed)
         
-        let codex = state.providers.first(where: { $0.id == "codex" })!
-        #expect(codex.status == .unknown("rate_limited"))
+        let codex = state.providers.first(where: { $0.providerID == "codex" })!
+        #expect(codex.status == .delayed("rate_limited"))
         #expect(codex.fiveHour.remainingPercent == 100.0) // 限制在 100
         #expect(codex.sevenDay.remainingPercent == 0.0)   // 限制在 0
     }
     
-    /// 多帳號 provider 目前只映射預設帳號，維持固定三列的既有版面。
-    /// 多帳號版面定案後，這個測試要跟著改成「一列一帳號」。
-    @Test func testMultiAccountMapsPrimaryOnly() {
+    /// 一個帳號一列：Dashboard 顯示所有帳號，provider 之間維持固定順序。
+    @Test func testMultiAccountMapsOneRowPerAccount() {
         let response = QuotaResponse(
             schemaVersion: 2,
             generatedAt: fixedNow,
@@ -173,13 +172,60 @@ struct QuotaDisplayMappingTests {
 
         let state = QuotaDisplayState.map(response: response, fetchedAt: fixedNow, now: fixedNow)
 
-        // 仍然是固定三列，claude 只有一列且取的是 main
-        #expect(state.providers.count == 3)
-        let claude = state.providers.first(where: { $0.id == "claude" })!
-        #expect(claude.fiveHour.remainingPercent == 61.0)
+        // codex 佔位 + claude main + claude work + agy 佔位
+        #expect(state.providers.count == 4)
+        #expect(state.providers.map(\.id) == ["codex/main", "claude/main", "claude/work", "agy/main"])
 
-        // 另一個帳號沒有被丟掉，只是還沒被顯示層用到
-        #expect(response.accounts(of: "claude").count == 2)
+        let claudeRows = state.providers.filter { $0.providerID == "claude" }
+        #expect(claudeRows.map(\.account) == ["main", "work"])
+        #expect(claudeRows[0].fiveHour.remainingPercent == 61.0)
+        #expect(claudeRows[1].fiveHour.remainingPercent == 34.0)
+
+        // 多帳號才顯示帳號標籤；accountIndex 決定卡片底色，0 不上色
+        #expect(claudeRows[0].accountLabel == "main")
+        #expect(claudeRows[0].accountIndex == 0)
+        #expect(claudeRows[1].accountLabel == "work")
+        #expect(claudeRows[1].accountIndex == 1)
+
+        // Widget 仍只拿預設帳號，維持固定三列
+        #expect(state.defaultAccountProviders.count == 3)
+        #expect(state.defaultAccountProviders.map(\.providerID) == ["codex", "claude", "agy"])
+    }
+
+    /// 單帳號 provider 不顯示帳號標籤，外觀與 schema v1 時相同。
+    @Test func testSingleAccountHasNoAccountLabel() {
+        let response = QuotaResponse(
+            schemaVersion: 2,
+            generatedAt: fixedNow,
+            providers: [
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex",
+                        account: "main",
+                        status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
+                    )
+                ]
+            ]
+        )
+
+        let state = QuotaDisplayState.map(response: response, fetchedAt: fixedNow, now: fixedNow)
+        let codex = state.providers.first(where: { $0.providerID == "codex" })!
+
+        #expect(codex.accountCount == 1)
+        #expect(codex.accountLabel == nil)
+        #expect(codex.isDefaultAccount)
+    }
+
+    /// 缺席的 provider 仍保留一列佔位，且算在 Widget 的預設帳號列裡。
+    @Test func testMissingProviderPlaceholderIsDefaultAccount() {
+        let state = QuotaDisplayState.map(response: nil, fetchedAt: nil, now: fixedNow)
+
+        #expect(state.providers.count == 3)
+        #expect(state.providers.allSatisfy { $0.status == .noData })
+        #expect(state.providers.allSatisfy(\.isDefaultAccount))
+        #expect(state.defaultAccountProviders.count == 3)
     }
 
     @Test func testFreshnessPolicy() {

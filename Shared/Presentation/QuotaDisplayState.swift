@@ -18,6 +18,24 @@ public struct QuotaDisplayState: Sendable, Equatable {
         self.fetchedAt = fetchedAt
     }
     
+    /// 只含各 provider 預設帳號的列。
+    ///
+    /// Widget 目前沿用這個維持固定三列版面：`systemMedium` 的垂直空間不夠再多一列，
+    /// 多帳號要怎麼在 Widget 呈現尚未定案。App Dashboard 是 ScrollView，沒有這個限制，
+    /// 直接用 `providers` 顯示所有帳號。
+    public var defaultAccountProviders: [ProviderDisplayState] {
+        providers.filter(\.isDefaultAccount)
+    }
+
+    /// 面板標頭的「最後同步」時間，只到分鐘。與 macOS 端一致。
+    public var lastSyncTimeText: String {
+        guard let fetchedAt else { return "—" }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: fetchedAt)
+    }
+
     public var lastSyncText: String {
         guard let fetchedAt = fetchedAt else { return "從未同步" }
         let formatter = RelativeDateTimeFormatter()
@@ -53,36 +71,41 @@ public extension QuotaDisplayState {
             ("agy", "AGY")
         ]
         
-        // schema v2 起一個 provider 可能有多個帳號（目前 claude 有 main、work）。
-        // 多帳號版面尚未定案，這裡先只映射預設帳號，維持既有的「固定三列」外觀；
-        // 其餘帳號已完整保留在 QuotaResponse 裡，改成一列一帳號時只需要動這個 map
-        // 與 ProviderDisplayState.id（多列同 id 會讓 ForEach 的 Identifiable 撞號）。
-        let providerStates = providerKeys.map { id, displayName -> ProviderDisplayState in
-            if let response = response, let providerData = response.primaryAccount(of: id) {
+        // schema v2 起一個 provider 可能有多個帳號（目前 claude 有 main、work），
+        // 因此一個帳號展開成一列。Provider 之間維持固定順序，同一個 provider 內
+        // 沿用伺服器給的順序（main 保證在最前）。
+        let providerStates = providerKeys.flatMap { id, displayName -> [ProviderDisplayState] in
+            let accounts = response?.accounts(of: id) ?? []
+
+            // 缺少 Provider 時保留一列佔位符
+            guard !accounts.isEmpty else {
+                return [
+                    ProviderDisplayState(
+                        providerID: id,
+                        displayName: displayName,
+                        status: .noData,
+                        lastSuccessAt: nil,
+                        fiveHour: WindowDisplayState(remainingPercent: nil, resetsAt: nil),
+                        sevenDay: WindowDisplayState(remainingPercent: nil, resetsAt: nil)
+                    )
+                ]
+            }
+
+            return accounts.enumerated().map { index, providerData in
                 let statusVal = providerData.status
-                let status: ProviderStatus = (statusVal == "ok") ? .ok : .unknown(statusVal)
-                
-                let fiveHourState = mapWindow(providerData.windows.fiveHour)
-                let sevenDayState = mapWindow(providerData.windows.sevenDay)
-                
+                let status: ProviderStatus = (statusVal == "ok") ? .ok : .delayed(statusVal)
+
                 return ProviderDisplayState(
-                    id: id,
+                    providerID: id,
                     displayName: displayName,
+                    account: providerData.account,
+                    accountIndex: index,
+                    accountCount: accounts.count,
                     status: status,
                     lastSuccessAt: providerData.lastSuccessAt,
-                    fiveHour: fiveHourState,
-                    sevenDay: sevenDayState,
+                    fiveHour: mapWindow(providerData.windows.fiveHour),
+                    sevenDay: mapWindow(providerData.windows.sevenDay),
                     resetCredits: mapResetCredits(providerData.resetCredits)
-                )
-            } else {
-                // 缺少 Provider 時顯示佔位符
-                return ProviderDisplayState(
-                    id: id,
-                    displayName: displayName,
-                    status: .unknown("沒有資料"),
-                    lastSuccessAt: nil,
-                    fiveHour: WindowDisplayState(remainingPercent: nil, resetsAt: nil),
-                    sevenDay: WindowDisplayState(remainingPercent: nil, resetsAt: nil)
                 )
             }
         }
