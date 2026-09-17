@@ -61,21 +61,32 @@ struct DashboardView: View {
     /// 對應 macOS 端的標頭島：左側標題與最後同步時間。
     /// macOS 的重新整理按鈕在 iOS 由下拉重新整理取代，這裡只在載入時顯示轉圈。
     private var headerCard: some View {
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
                 Text("AI USAGE")
                     .font(.caption2.weight(.bold))
                     .tracking(1)
+
+                Spacer(minLength: 8)
+
+                if viewModel.isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+
+            HStack(spacing: 8) {
                 Text("最後同步：\(viewModel.displayState.lastSyncTimeText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
 
-            Spacer(minLength: 8)
+                Spacer(minLength: 8)
 
-            if viewModel.isLoading {
-                ProgressView()
-                    .controlSize(.small)
+                // 建置識別：分辨手機上跑的到底是哪一版
+                Text(AppConfiguration.commitLabel)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
             }
         }
         .padding(.horizontal, 12)
@@ -119,8 +130,6 @@ struct ProviderStackCardView: View {
     @State private var isPressing = false
     /// 按下去的時刻，用來算還要不要補足 pressDuration
     @State private var pressStartedAt: Date?
-    /// 這次按壓是不是真的點擊（而不是捲動把手勢帶走）
-    @State private var pendingSwitch = false
 
     /// 後面那張往下露出的高度
     private static let peek: CGFloat = 9
@@ -133,6 +142,8 @@ struct ProviderStackCardView: View {
     /// 按下去時整落牌往中間收斂的位置（0 = 最前面，1 = 牌底那張）。
     /// 所有卡片收到同一個位置、大小與明度，誰在前誰在後完全看不出來
     private static let pressLevel: CGFloat = 0.5
+    /// 手指移動超過這個距離就不算點擊，視為捲動
+    private static let tapSlop: CGFloat = 10
 
     var body: some View {
         cardStack
@@ -140,9 +151,8 @@ struct ProviderStackCardView: View {
             .modifier(
                 StackPressGestures(
                     enabled: stack.isMultiAccount,
-                    onPress: press,
-                    onRelease: release,
-                    onTap: { pendingSwitch = true }
+                    onChanged: dragChanged,
+                    onEnded: dragEnded
                 )
             )
             .accessibilityElement(children: .contain)
@@ -181,35 +191,41 @@ struct ProviderStackCardView: View {
 
     // MARK: - 按壓
 
-    /// 按下：整落牌沉下去
-    private func press() {
+    private func moved(_ value: DragGesture.Value) -> CGFloat {
+        abs(value.translation.width) + abs(value.translation.height)
+    }
+
+    /// 手指按著：沉下去。一旦移動超過 tapSlop 就當成捲動，立刻還原
+    private func dragChanged(_ value: DragGesture.Value) {
+        guard moved(value) <= Self.tapSlop else {
+            if isPressing { settle(next: nil) }
+            return
+        }
         guard !isPressing else { return }
         pressStartedAt = .now
         // 加速壓下去，像被指頭按住
         withAnimation(.easeIn(duration: Self.pressDuration)) { isPressing = true }
     }
 
-    /// 手指離開：彈回來，是點擊的話順便換帳號
-    private func release() {
+    /// 手指離開：彈回來。位移夠小才算點擊，才換帳號
+    private func dragEnded(_ value: DragGesture.Value) {
         guard isPressing else { return }
+        let next = moved(value) <= Self.tapSlop ? stack.account(after: frontAccount) : nil
+
+        // 點得太快時沉下去還沒走完，先補足剩下的時間。
+        // 沒補的話兩張卡還沒收斂到同一個位置就交換，會被看見
         let elapsed = pressStartedAt.map { Date.now.timeIntervalSince($0) } ?? Self.pressDuration
         let remaining = Self.pressDuration - elapsed
+        guard remaining > 0 else { return settle(next: next) }
 
-        // 一律排到下一輪 runloop 之後才收尾。onTapGesture 與 DragGesture 的 onEnded
-        // 在同一輪事件裡觸發、順序不保證，延後才能確定讀得到 pendingSwitch。
-        // 點得太快時順便補足沉下去剩餘的時間 — 沒補的話兩張卡還沒收斂到同一個位置
-        // 就交換，會被看見
+        // next 先算好帶進 closure，不在 closure 裡讀 @State
         Task { @MainActor in
-            if remaining > 0 {
-                try? await Task.sleep(for: .seconds(remaining))
-            }
-            settle()
+            try? await Task.sleep(for: .seconds(remaining))
+            settle(next: next)
         }
     }
 
-    private func settle() {
-        let next = pendingSwitch ? stack.account(after: frontAccount) : nil
-        pendingSwitch = false
+    private func settle(next: String?) {
         // 阻尼壓低才彈得出來
         withAnimation(.spring(response: 0.40, dampingFraction: 0.60)) {
             if let next { frontAccount = next }
@@ -234,24 +250,22 @@ struct ProviderStackCardView: View {
 /// 2. `Button` 的 `isPressed` 在捲動把手勢帶走時同樣會轉 false，分不出
 ///    「放開」與「取消」，捲過多帳號卡片就會誤換帳號。
 ///
-/// 因此用 `DragGesture` 驅動沉下去／彈回來的動畫，另外用 `onTapGesture` 判斷
-/// 這次到底算不算點擊 — 捲動不會產生 tap，帳號就不會被換掉。
+/// 只用一個 `DragGesture`：沉下去／彈回來的動畫走它，是不是點擊則看
+/// `translation` 的位移量。之前拿 `onTapGesture` 搭 `DragGesture(minimumDistance: 0)`
+/// 判斷點擊是錯的 — 兩個手勢會互搶，tap 根本沒被辨識到，所以卡片只沉不換。
 private struct StackPressGestures: ViewModifier {
     let enabled: Bool
-    let onPress: () -> Void
-    let onRelease: () -> Void
-    let onTap: () -> Void
+    let onChanged: (DragGesture.Value) -> Void
+    let onEnded: (DragGesture.Value) -> Void
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if enabled {
-            content
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in onPress() }
-                        .onEnded { _ in onRelease() }
-                )
-                .onTapGesture { onTap() }
+            content.simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged(onChanged)
+                    .onEnded(onEnded)
+            )
         } else {
             content
         }
@@ -414,8 +428,8 @@ struct UsageRowView: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(label)
-                .frame(width: 24, alignment: .leading)
-                .font(.caption.weight(.semibold))
+                .frame(width: 22, alignment: .leading)
+                .font(.caption2.weight(.semibold))
 
             ProgressBarView(
                 progress: (window.remainingPercent ?? 0) / 100.0,
@@ -424,15 +438,23 @@ struct UsageRowView: View {
             .frame(maxWidth: .infinity)
 
             Text(window.percentText)
-                .frame(width: 38, alignment: .trailing)
-                .font(.caption.weight(.bold))
+                .frame(width: 36, alignment: .trailing)
+                .font(.caption2.weight(.bold))
                 .fontDesign(.rounded)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Text(window.resetsAtRowText)
-                .frame(width: 116, alignment: .trailing)
-                .font(.caption2)
+                .frame(width: 104, alignment: .trailing)
+                .font(.system(size: 10))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
+        // 這三欄的字級上限壓在預設值：它們是固定欄寬的表格，跟著動態字體長大就會
+        // 折行（實機上「100%」被折成兩行、重置時間折成兩行）。Provider 名稱、
+        // 狀態與標頭仍然完整支援動態字體
+        .dynamicTypeSize(...DynamicTypeSize.large)
         // 併成一個元素，但要自己給 label／value，否則 VoiceOver 會整列跳過
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityTitle)

@@ -8,6 +8,20 @@ public enum AppGroupConstants {
     public static let cacheFileName = "cached_quota.json"
 }
 
+/// 建置識別。
+///
+/// commit SHA 由 build 指令以 `INFOPLIST_KEY_AIQuotaCommit=$(git rev-parse --short HEAD)`
+/// 寫進產生的 Info.plist（見 `scripts/redeploy.sh`）。直接在 Xcode 按 Run 不會帶這個設定，
+/// 此時顯示「dev」。後綴 `+` 表示 build 當下工作區還有未提交的改動。
+public enum AppConfiguration {
+    public static let commitLabel: String = {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "AIQuotaCommit") as? String,
+              !value.trimmingCharacters(in: .whitespaces).isEmpty
+        else { return "dev" }
+        return value
+    }()
+}
+
 /// 管理 endpoint 的存取，使用 App Group UserDefaults。
 public struct EndpointStore: @unchecked Sendable {
     private let defaults: UserDefaults

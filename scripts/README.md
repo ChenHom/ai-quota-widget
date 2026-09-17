@@ -60,13 +60,27 @@ cat ~/Library/Application\ Support/AIQuota-Redeploy/last-success   # epoch 秒�
   ```bash
   xcodebuild build -project AIQuota.xcodeproj -scheme AIQuota -configuration Debug \
     -destination "generic/platform=iOS" -derivedDataPath build/DerivedData \
-    -allowProvisioningUpdates -allowProvisioningDeviceRegistration
+    -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+    INFOPLIST_KEY_AIQuotaCommit="$(git rev-parse --short HEAD)"
   ```
   如果之後這個自動化開始莫名其妙失敗，先打開 Xcode 檢查 Accounts 頁面的登入狀態。
 - **`do shell script` 的執行環境 PATH 比較精簡**。`xcodebuild`/`xcrun` 通常本來就
   在 `/usr/bin` 這種預設路徑下，理論上不用額外處理；但第一次雙擊 wrapper app
   觸發時要確認一次，log 裡如果出現 `command not found`，才需要在 `redeploy.sh`
   開頭加 `export PATH=...`。
+
+## 建置識別（commit SHA）
+
+App 標頭「最後同步」那一行的右側會顯示 build 當下的 commit SHA，用來分辨手機上跑的
+到底是哪一版。值是 build 時以 `INFOPLIST_KEY_AIQuotaCommit=<sha>` 寫進產生的
+Info.plist，App 用 `Bundle.main.object(forInfoDictionaryKey:)` 讀出來。
+
+後綴 `+` 表示 build 當下工作區還有未提交的改動。**直接在 Xcode 按 Run 不會帶這個設定**，
+此時顯示 `dev` — 這是預期行為，不是錯誤。手動下指令時要帶：
+
+```bash
+INFOPLIST_KEY_AIQuotaCommit="$(git rev-parse --short HEAD)"
+```
 
 ## 狀態／log 位置
 

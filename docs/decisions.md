@@ -5,6 +5,39 @@
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
 
+## 2026-09-17 修正：疊牌只沉不換 — `onTapGesture` 搭 `DragGesture` 的判斷是錯的
+
+**現象**：實機上點擊多帳號卡片，整落牌會沉下去，但放開後不會換帳號，後面那張永遠浮不上來。
+
+**原因**：原本的寫法是 `DragGesture(minimumDistance: 0)` 驅動動畫、另外掛 `onTapGesture` 把 `pendingSwitch` 設成 true，收尾時再讀這個旗標。兩個問題疊在一起：
+
+1. `minimumDistance: 0` 的 `DragGesture` 會吃掉整個觸控序列，`onTapGesture` 的 tap 根本沒被辨識到，`pendingSwitch` 永遠是 false。
+2. 就算 tap 有觸發，收尾是排在 `Task` 裡執行的，而在 escaping closure 裡讀 `@State` 本來就不保證讀得到最新值。
+
+**修正**：拿掉 `onTapGesture` 與 `pendingSwitch`，只留一個 `DragGesture`，用它自己的 `translation` 判斷是不是點擊 — 位移在 10pt 內算點擊、換帳號；超過就是捲動，只還原不換。`onChanged` 一旦偵測到超過門檻就立刻還原，捲動時不會留下一張沉著的卡片。要換的帳號在進 `Task` 之前就先算成區域常數帶進去，closure 裡不再讀任何 `@State`。
+
+這同時保住原本用手勢而非 `Button` 的兩個理由（巢狀 Button 收不到點擊、`Button` 的 `isPressed` 分不出放開與取消）。
+
+## 2026-09-17 修正：卡片右側欄位折行，字級改小並壓住動態字體
+
+**現象**：實機（動態字體高於預設）上「100%」被折成「100 / %」兩行，重置時間也折成兩行。
+
+**原因**：百分比與重置時間是固定欄寬（38pt／116pt）的表格欄位，但用的是會跟著動態字體放大的 `.caption`／`.caption2`，放大後塞不下就折行。當初估欄寬時是用預設字級算的。
+
+**修正**：三欄字級各降一階（`.caption` → `.caption2`、重置時間改 10pt），欄寬調成 22／36／104pt，並加上 `lineLimit(1)` 與 `minimumScaleFactor(0.7)`，超出時縮字而不折行。整列再加 `.dynamicTypeSize(...DynamicTypeSize.large)` 把字級上限壓在預設值。
+
+**取捨**：這三欄因此不再隨動態字體放大，對低視力使用者是損失。Provider 名稱、狀態膠囊與標頭仍然完整支援動態字體。Widget 端早就為同樣理由對同樣的欄位採固定字級（見 2026-07-16 的 Widget 名稱折行修正），這裡與它一致。
+
+## 2026-09-17 新增：標頭顯示建置識別（commit SHA）
+
+App 標頭「最後同步」那一行的右側顯示 build 當下的 commit SHA，用來分辨手機上跑的是哪一版；後綴 `+` 表示工作區有未提交的改動，與 macOS 端的口徑一致。
+
+值由 build 指令以 `INFOPLIST_KEY_AIQuotaCommit=<sha>` 寫進產生的 Info.plist，`AppConfiguration.commitLabel` 用 `Bundle.main.object(forInfoDictionaryKey:)` 讀出來，讀不到就顯示 `dev`。`scripts/redeploy.sh` 已經帶這個設定。
+
+**為什麼用這個做法**：App target 是 `GENERATE_INFOPLIST_FILE: true`，沒有可以直接編輯的 Info.plist；改用 Run Script build phase 要動 `project.yml` 並重新產生 pbxproj。`INFOPLIST_KEY_` 前綴可以直接從 xcodebuild 命令列帶進去，專案檔完全不用改，而且讀不到時會退回 `dev`，失敗也不會讓建置壞掉。
+
+`AppConfiguration` 放在 `Shared/Configuration/EndpointStore.swift`（`AppGroupConstants` 旁邊）而不是新開檔案：committed 的 pbxproj 是逐檔列舉來源的，新增檔案要手動補 8 行專案設定，風險大於收益。
+
 ## 2026-09-17 清理：移除 `ProgressRingView`
 
 Dashboard 改用橫向進度列後，`Shared/Presentation/ProgressRingView.swift` 就沒有任何呼叫端了 — 它原本只服務雙圓環版面。

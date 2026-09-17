@@ -53,6 +53,14 @@ fi
 
 log "距離上次成功部署 ${age_days} 天，開始重新 build + 安裝"
 
+# 建置識別：寫進 Info.plist，App 標頭右側會顯示，用來分辨手機上跑的是哪一版。
+# 後綴 + 表示 build 當下工作區還有未提交的改動（與 macOS 端的口徑一致）
+COMMIT=$(git -C "$PROJECT_DIR" rev-parse --short HEAD 2>/dev/null || echo dev)
+if ! git -C "$PROJECT_DIR" diff --quiet HEAD 2>/dev/null; then
+    COMMIT="${COMMIT}+"
+fi
+log "建置識別：${COMMIT}"
+
 build_output=$(xcodebuild build \
     -project "$PROJECT" \
     -scheme "$SCHEME" \
@@ -60,7 +68,8 @@ build_output=$(xcodebuild build \
     -destination "generic/platform=iOS" \
     -derivedDataPath "$DERIVED_DATA_PATH" \
     -allowProvisioningUpdates \
-    -allowProvisioningDeviceRegistration 2>&1)
+    -allowProvisioningDeviceRegistration \
+    INFOPLIST_KEY_AIQuotaCommit="$COMMIT" 2>&1)
 build_status=$?
 echo "$build_output" >> "$LOG_FILE"
 
