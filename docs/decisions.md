@@ -1,9 +1,35 @@
 # AIQuota 決策與修正記錄
 
-最後更新：2026-08-24
+最後更新：2026-09-17
 相關文件：[產品規格](specification.md) · [實作規劃](implementation-plan.md) · [工作清單](tasks.md) · [部署自動化](../scripts/README.md)
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
+
+## 2026-09-17 決策：跟進 collector schema v2，資料層先完整支援多帳號、顯示層暫時只取 `main`
+
+**背景**：collector 自 2026-09-16 10:51 (+08:00) 起只輸出 schema v2（見 [public-schema-v2.md](https://github.com/ChenHom/ai-quota/blob/main/public-schema-v2.md)），v1 不再提供。v2 把 `providers.<key>` 從單一物件改成「一帳號一元素」的陣列，元素新增 `account`，`lastSuccessAt` 改為可為 null，另外多了 `confidence`／`source`／`usedPercent`。目前 `claude` 有 `main`、`work` 兩個帳號。
+
+**原因分析**：這不是「跟進新欄位」而是既有版本已經壞掉。widget 端有三個獨立的破口，任一個都會讓 `fetchQuota` 拋錯、退回舊快取：
+
+1. `QuotaResponse.providers` 宣告為 `[String: ProviderQuota]`，遇到陣列是 `typeMismatch`。
+2. `ProviderQuota.lastSuccessAt` 是非 optional 的 `Date`，遇到 null 是 `valueNotFound`。
+3. `QuotaAPIClient.supportedSchemaVersions` 是 `[1]`，v2 一律拒絕。
+
+而且 `fetchQuota` 原本先解碼再驗版本，所以實際浮出的錯誤是第 1 項的「資料解析失敗」，把「資料格式版本不相容，請更新 App」這個真正有用的訊息蓋掉了。
+
+**處理方式**：
+
+- `providers` 改為 `[String: [ProviderQuota]]`。刻意不採用 macOS 端的固定三鍵結構：`agy` 本來就可能整個缺席，字典能自然承接，未來多一個 provider key 也只會被忽略而不是讓整份快照解碼失敗。
+- `ProviderQuota` 新增 `account: String`（記憶體建構時預設 `main`，解碼時仍為必要欄位），`lastSuccessAt` 改為 `Date?`。
+- `supportedSchemaVersions` 改為 `[2]`，並把版本檢查移到完整解碼之前：先用只含 `schemaVersion` 的輕量 `SchemaProbe` 解一次。跨版本連 `providers` 形狀都會變，順序反過來就會再次發生「版本問題被誤報成解析問題」。
+- 新增 `QuotaResponse.accounts(of:)` 與 `primaryAccount(of:)`。後者先比對 `account == "main"`、找不到才退回第一個元素 — schema 文件明確要求以 `account` 比對而非依賴索引，因為伺服器會重排陣列。
+- `confidence`／`source`／`usedPercent`／`applicableAvailableCount` 維持不解碼。Decodable 會忽略未宣告的 key，沿用 2026-08-24 對 `applicableAvailableCount` 的既有結論。
+- **顯示層暫不改動**：`QuotaDisplayState.map` 改成取 `primaryAccount(of:)`，維持固定三列的既有外觀。多帳號版面（Widget 要擠進 `systemMedium`、改用 `systemLarge`、還是只在 App 端全顯示）尚未定案，先不讓資料層的修復被版面決策擋住。
+- 舊快取在升版後解不開，`QuotaCache.load()` 會當作無快取回傳 `nil`（既有設計），第一次 refresh 即恢復，不會 crash。
+
+**待辦**：多帳號版面定案後，`ProviderDisplayState.id` 必須從 `"claude"` 改成 `"claude/work"` 這類複合鍵。`DashboardView` 與 `MediumQuotaWidgetView` 兩處都用 `ForEach` 吃 `Identifiable`，兩列同 id 不會報錯，只會安靜地畫錯。
+
+**驗證**：本次在無 Swift 工具鏈的環境完成，**未經編譯或測試執行**。已完成的檢查：5 份 fixture 的 JSON 語法驗證、全專案 grep 確認無殘留的 v1 形狀存取。測試已同步改寫並新增多帳號解碼、`account` 比對、null `lastSuccessAt`、未知欄位忽略、v1 形狀必須拒絕、版本檢查早於解碼（以 stub `URLProtocol` 實測 `QuotaAPIClient`）等案例，需在 Xcode 實機跑過 `xcodebuild test` 才算驗證完成。
 
 ## 2026-08-24 決策：`resetCredits` 以徽章加點擊清單呈現，不逐筆攤開
 

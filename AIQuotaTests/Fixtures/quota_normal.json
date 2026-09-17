@@ -1,48 +1,88 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "2026-07-16T09:30:00Z",
   "providers": {
-    "codex": {
-      "provider": "codex",
-      "status": "ok",
-      "lastSuccessAt": "2026-07-16T09:29:30Z",
-      "windows": {
-        "five_hour": {
-          "remainingPercent": 82.4,
-          "resetsAt": "2026-07-16T12:00:00Z"
-        },
-        "seven_day": {
-          "remainingPercent": 54.0,
-          "resetsAt": null
+    "codex": [
+      {
+        "provider": "codex",
+        "account": "main",
+        "status": "ok",
+        "confidence": "experimental",
+        "source": "chatgpt.com/backend-api/wham/usage",
+        "lastSuccessAt": "2026-07-16T09:29:30Z",
+        "windows": {
+          "five_hour": {
+            "usedPercent": 17.6,
+            "remainingPercent": 82.4,
+            "resetsAt": "2026-07-16T12:00:00Z"
+          },
+          "seven_day": {
+            "usedPercent": 46.0,
+            "remainingPercent": 54.0,
+            "resetsAt": null
+          }
         }
       }
-    },
-    "claude": {
-      "provider": "claude",
-      "status": "ok",
-      "lastSuccessAt": "2026-07-16T09:29:45Z",
-      "windows": {
-        "five_hour": {
-          "remainingPercent": 63.0,
-          "resetsAt": "2026-07-16T10:30:00Z"
-        },
-        "seven_day": {
-          "remainingPercent": 78.5,
-          "resetsAt": "2026-07-20T18:00:00Z"
+    ],
+    "claude": [
+      {
+        "provider": "claude",
+        "account": "main",
+        "status": "ok",
+        "confidence": "experimental",
+        "source": "api.anthropic.com/api/oauth/usage",
+        "lastSuccessAt": "2026-07-16T09:29:45Z",
+        "windows": {
+          "five_hour": {
+            "usedPercent": 37.0,
+            "remainingPercent": 63.0,
+            "resetsAt": "2026-07-16T10:30:00Z"
+          },
+          "seven_day": {
+            "usedPercent": 21.5,
+            "remainingPercent": 78.5,
+            "resetsAt": "2026-07-20T18:00:00Z"
+          }
+        }
+      },
+      {
+        "provider": "claude",
+        "account": "work",
+        "status": "ok",
+        "confidence": "experimental",
+        "source": "api.anthropic.com/api/oauth/usage",
+        "lastSuccessAt": "2026-07-16T09:29:45Z",
+        "windows": {
+          "five_hour": {
+            "usedPercent": 66.0,
+            "remainingPercent": 34.0,
+            "resetsAt": "2026-07-16T11:15:00Z"
+          },
+          "seven_day": {
+            "usedPercent": 12.0,
+            "remainingPercent": 88.0,
+            "resetsAt": "2026-07-19T04:00:00Z"
+          }
         }
       }
-    },
-    "agy": {
-      "provider": "agy",
-      "status": "ok",
-      "lastSuccessAt": "2026-07-16T09:28:10Z",
-      "windows": {
-        "five_hour": {
-          "remainingPercent": 41.0,
-          "resetsAt": "2026-07-16T14:00:00Z"
-        },
-        "seven_day": null
+    ],
+    "agy": [
+      {
+        "provider": "agy",
+        "account": "main",
+        "status": "ok",
+        "confidence": "experimental",
+        "source": "daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+        "lastSuccessAt": "2026-07-16T09:28:10Z",
+        "windows": {
+          "five_hour": {
+            "usedPercent": 59.0,
+            "remainingPercent": 41.0,
+            "resetsAt": "2026-07-16T14:00:00Z"
+          },
+          "seven_day": null
+        }
       }
-    }
+    ]
   }
 }

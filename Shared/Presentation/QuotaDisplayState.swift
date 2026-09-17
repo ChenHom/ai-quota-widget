@@ -53,8 +53,12 @@ public extension QuotaDisplayState {
             ("agy", "AGY")
         ]
         
+        // schema v2 起一個 provider 可能有多個帳號（目前 claude 有 main、work）。
+        // 多帳號版面尚未定案，這裡先只映射預設帳號，維持既有的「固定三列」外觀；
+        // 其餘帳號已完整保留在 QuotaResponse 裡，改成一列一帳號時只需要動這個 map
+        // 與 ProviderDisplayState.id（多列同 id 會讓 ForEach 的 Identifiable 撞號）。
         let providerStates = providerKeys.map { id, displayName -> ProviderDisplayState in
-            if let response = response, let providerData = response.providers[id] {
+            if let response = response, let providerData = response.primaryAccount(of: id) {
                 let statusVal = providerData.status
                 let status: ProviderStatus = (statusVal == "ok") ? .ok : .unknown(statusVal)
                 

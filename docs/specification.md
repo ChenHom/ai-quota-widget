@@ -71,7 +71,8 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 - `systemSmall`、Lock Screen、Apple Watch Widget。
 - Live Activity。
 - Push-based Widget update。
-- 多 endpoint 或多帳號。
+- 多 endpoint。
+- 多帳號的顯示版面（schema v2 起資料層已完整解碼每個帳號，顯示層暫時只呈現預設帳號 `main`；版面定案前不列為第一版範圍）。
 - 保證固定時間或每 5 分鐘更新 Widget。
 - Widget 中的完整錯誤診斷。
 
@@ -79,37 +80,51 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 
 ### 5.1 JSON 範例
 
+對應 collector 端 schema v2（2026-09-16 起伺服器只輸出 v2，v1 不再提供）。
+`providers` 底下每個 Provider 是「一帳號一元素」的陣列。
+
 ```json
 {
-  "schemaVersion": 1,
-  "generatedAt": "2026-07-16T09:30:00Z",
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-16T02:56:34.538Z",
   "providers": {
-    "codex": {
-      "provider": "codex",
-      "status": "ok",
-      "lastSuccessAt": "2026-07-16T09:29:30.123Z",
-      "windows": {
-        "five_hour": {
-          "remainingPercent": 82.4,
-          "resetsAt": "2026-07-16T12:00:00Z"
-        },
-        "seven_day": {
-          "remainingPercent": 54.0,
-          "resetsAt": null
-        }
-      },
-      "resetCredits": {
-        "availableCount": 2,
-        "applicableAvailableCount": 1,
-        "credits": [
-          {
-            "status": "available",
-            "grantedAt": "2026-07-01T00:00:00Z",
-            "expiresAt": "2026-08-01T00:00:00Z"
+    "codex": [
+      {
+        "provider": "codex",
+        "account": "main",
+        "status": "ok",
+        "confidence": "experimental",
+        "source": "chatgpt.com/backend-api/wham/usage",
+        "lastSuccessAt": "2026-09-16T02:56:34.538Z",
+        "windows": {
+          "five_hour": {
+            "usedPercent": 17.6,
+            "remainingPercent": 82.4,
+            "resetsAt": "2026-09-16T07:30:11.000Z"
+          },
+          "seven_day": {
+            "usedPercent": 46.0,
+            "remainingPercent": 54.0,
+            "resetsAt": null
           }
-        ]
+        },
+        "resetCredits": {
+          "availableCount": 2,
+          "applicableAvailableCount": 1,
+          "credits": [
+            {
+              "status": "available",
+              "grantedAt": "2026-09-04T01:39:45.503Z",
+              "expiresAt": "2026-10-04T01:39:45.503Z"
+            }
+          ]
+        }
       }
-    }
+    ],
+    "claude": [
+      { "provider": "claude", "account": "main", "status": "ok", "...": "..." },
+      { "provider": "claude", "account": "work", "status": "ok", "...": "..." }
+    ]
   }
 }
 ```
@@ -118,21 +133,32 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 
 | 欄位 | 型別 | 必要 | 規則 |
 |---|---|---:|---|
-| `schemaVersion` | Integer | 是 | 第一版只接受明確支援的版本 |
+| `schemaVersion` | Integer | 是 | 只接受 `2`；其餘一律視為不可用 |
 | `generatedAt` | ISO 8601 Date | 是 | 支援有／無小數秒 |
-| `providers` | Object | 是 | key 為 Provider 識別字 |
+| `providers` | Object | 是 | key 為 Provider 識別字，value 為帳號陣列 |
+| `providers.<key>` | Array | 是 | 至少 1 個元素；`agy` 可能整個缺席 |
 | `provider` | String | 是 | 顯示名稱不可直接依賴此原始值 |
+| `account` | String | 是 | 帳號標籤，同 Provider 內唯一；預設帳號固定叫 `main` |
 | `status` | String | 是 | `ok` 為正常；未知值視為非正常但不可解碼失敗 |
-| `lastSuccessAt` | ISO 8601 Date | 是 | Provider 最後成功時間 |
+| `confidence` | String | 否 | 目前不解碼、不顯示 |
+| `source` | String | 否 | 上游端點；目前不解碼、不顯示 |
+| `lastSuccessAt` | ISO 8601 Date 或 null | 是 | Provider 最後成功時間；null 不可造成解碼失敗 |
 | `five_hour` | Object 或 null | 是 | 缺值不可轉成 0% |
-| `seven_day` | Object 或 null | 是 | 缺值不可轉成 0% |
+| `seven_day` | Object 或 null | 是 | 缺值不可轉成 0%；agy 恆為 null |
+| `usedPercent` | Double | 否 | 與 `remainingPercent` 互補；目前不解碼、不顯示 |
 | `remainingPercent` | Double | 是 | 顯示時限制於 0–100；保留原始值供診斷 |
 | `resetsAt` | ISO 8601 Date 或 null | 是 | null 顯示為 `—` 或省略 |
-| `resetCredits` | Object 或缺 | 否 | 重置券；缺欄位或 `availableCount` 為 0 時完全不顯示 |
+| `resetCredits` | Object 或 null 或缺 | 否 | 重置券；缺欄位、null 或 `availableCount` 為 0 時完全不顯示 |
 | `availableCount` | Integer | 是（在 `resetCredits` 內） | 徽章顯示的張數 |
 | `applicableAvailableCount` | Integer | 否 | 與 `availableCount` 的語意差異未定，暫不解碼、不顯示 |
 | `credits` | Array | 是（在 `resetCredits` 內） | 每筆含 `status`／`grantedAt`／`expiresAt` |
 | `expiresAt` | ISO 8601 Date 或 null | 是（在 `credits` 內） | 固定以 Asia/Taipei 顯示；null 顯示為 `—` |
+
+### 5.2.1 帳號選取
+
+- 陣列順序為伺服器設定順序，`main` 保證排在最前，但消費端必須以 `account` 比對而非依賴索引。
+- 顯示層目前只取預設帳號：先找 `account == "main"`，找不到才退回第一個元素。
+- 其餘帳號完整保留在解碼結果中，供多帳號版面定案後使用。
 
 ### 5.3 Provider 順序
 
@@ -183,6 +209,7 @@ Endpoint 必須：
 
 - 解碼器必須支援有／無 fractional seconds 的 ISO 8601 日期。
 - 不支援的 `schemaVersion` 必須產生獨立錯誤類型。
+- `schemaVersion` 檢查必須早於完整解碼：跨版本連 `providers` 的形狀都會變，先解碼會讓版本不符表現成解碼錯誤。
 - 未知 Provider status 不得使整份資料解碼失敗。
 
 ### DATA-003 快取

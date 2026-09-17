@@ -22,30 +22,36 @@ import WidgetKit
     {
         let now = Date()
         let response = QuotaResponse(
-            schemaVersion: 1,
+            schemaVersion: 2,
             generatedAt: now.addingTimeInterval(-300),
             providers: [
-                "codex": ProviderQuota(
-                    provider: "codex", status: "ok",
-                    lastSuccessAt: now.addingTimeInterval(-320),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 82.4, resetsAt: now.addingTimeInterval(3600)),
-                        sevenDay: UsageWindow(remainingPercent: 54.0, resetsAt: nil)
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex", account: "main", status: "ok",
+                        lastSuccessAt: now.addingTimeInterval(-320),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 82.4, resetsAt: now.addingTimeInterval(3600)),
+                            sevenDay: UsageWindow(remainingPercent: 54.0, resetsAt: nil)
+                        )
                     )
-                ),
-                "claude": ProviderQuota(
-                    provider: "claude", status: "ok",
-                    lastSuccessAt: now.addingTimeInterval(-330),
-                    windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
-                ),
-                "agy": ProviderQuota(
-                    provider: "agy", status: "ok",
-                    lastSuccessAt: now.addingTimeInterval(-340),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: now.addingTimeInterval(1800)),
-                        sevenDay: nil
+                ],
+                "claude": [
+                    ProviderQuota(
+                        provider: "claude", account: "main", status: "ok",
+                        lastSuccessAt: now.addingTimeInterval(-330),
+                        windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
                     )
-                )
+                ],
+                "agy": [
+                    ProviderQuota(
+                        provider: "agy", account: "main", status: "ok",
+                        lastSuccessAt: now.addingTimeInterval(-340),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: now.addingTimeInterval(1800)),
+                            sevenDay: nil
+                        )
+                    )
+                ]
             ]
         )
         let state = QuotaDisplayState.map(response: response, fetchedAt: now, now: now)
@@ -61,25 +67,29 @@ import WidgetKit
     {
         let now = Date()
         let response = QuotaResponse(
-            schemaVersion: 1,
+            schemaVersion: 2,
             generatedAt: now.addingTimeInterval(-300),
             providers: [
-                "codex": ProviderQuota(
-                    provider: "codex", status: "ok",
-                    lastSuccessAt: now.addingTimeInterval(-320),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 82.4, resetsAt: nil),
-                        sevenDay: UsageWindow(remainingPercent: 54.0, resetsAt: nil)
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex", account: "main", status: "ok",
+                        lastSuccessAt: now.addingTimeInterval(-320),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 82.4, resetsAt: nil),
+                            sevenDay: UsageWindow(remainingPercent: 54.0, resetsAt: nil)
+                        )
                     )
-                ),
-                "agy": ProviderQuota(
-                    provider: "agy", status: "ok",
-                    lastSuccessAt: now.addingTimeInterval(-340),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: nil),
-                        sevenDay: nil
+                ],
+                "agy": [
+                    ProviderQuota(
+                        provider: "agy", account: "main", status: "ok",
+                        lastSuccessAt: now.addingTimeInterval(-340),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: nil),
+                            sevenDay: nil
+                        )
                     )
-                )
+                ]
             ]
         )
         let state = QuotaDisplayState.map(response: response, fetchedAt: now, now: now)
@@ -119,33 +129,39 @@ import WidgetKit
     {
         let now = Date()
         let response = QuotaResponse(
-            schemaVersion: 1,
+            schemaVersion: 2,
             generatedAt: now.addingTimeInterval(-300),
             providers: [
-                "codex": ProviderQuota(
-                    provider: "codex", status: "rate_limited",
-                    lastSuccessAt: now.addingTimeInterval(-600),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 0.0, resetsAt: now.addingTimeInterval(900)),
-                        sevenDay: UsageWindow(remainingPercent: 3.0, resetsAt: nil)
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex", account: "main", status: "rate_limited",
+                        lastSuccessAt: now.addingTimeInterval(-600),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 0.0, resetsAt: now.addingTimeInterval(900)),
+                            sevenDay: UsageWindow(remainingPercent: 3.0, resetsAt: nil)
+                        )
                     )
-                ),
-                "claude": ProviderQuota(
-                    provider: "claude", status: "ok",
-                    lastSuccessAt: now.addingTimeInterval(-330),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 2.5, resetsAt: now.addingTimeInterval(1200)),
-                        sevenDay: UsageWindow(remainingPercent: 8.0, resetsAt: nil)
+                ],
+                "claude": [
+                    ProviderQuota(
+                        provider: "claude", account: "main", status: "ok",
+                        lastSuccessAt: now.addingTimeInterval(-330),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 2.5, resetsAt: now.addingTimeInterval(1200)),
+                            sevenDay: UsageWindow(remainingPercent: 8.0, resetsAt: nil)
+                        )
                     )
-                ),
-                "agy": ProviderQuota(
-                    provider: "agy", status: "error",
-                    lastSuccessAt: now.addingTimeInterval(-3600),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 15.0, resetsAt: nil),
-                        sevenDay: nil
+                ],
+                "agy": [
+                    ProviderQuota(
+                        provider: "agy", account: "main", status: "error",
+                        lastSuccessAt: now.addingTimeInterval(-3600),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 15.0, resetsAt: nil),
+                            sevenDay: nil
+                        )
                     )
-                )
+                ]
             ]
         )
         let state = QuotaDisplayState.map(response: response, fetchedAt: now, now: now)

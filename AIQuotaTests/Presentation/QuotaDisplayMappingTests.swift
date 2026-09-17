@@ -13,18 +13,21 @@ struct QuotaDisplayMappingTests {
     
     @Test func testNormalMapping() {
         let response = QuotaResponse(
-            schemaVersion: 1,
+            schemaVersion: 2,
             generatedAt: fixedNow.addingTimeInterval(-300), // 5 分鐘前 (fresh)
             providers: [
-                "codex": ProviderQuota(
-                    provider: "codex",
-                    status: "ok",
-                    lastSuccessAt: fixedNow.addingTimeInterval(-330),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 82.4, resetsAt: fixedNow.addingTimeInterval(7200)),
-                        sevenDay: UsageWindow(remainingPercent: 54.0, resetsAt: nil)
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex",
+                        account: "main",
+                        status: "ok",
+                        lastSuccessAt: fixedNow.addingTimeInterval(-330),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 82.4, resetsAt: fixedNow.addingTimeInterval(7200)),
+                            sevenDay: UsageWindow(remainingPercent: 54.0, resetsAt: nil)
+                        )
                     )
-                )
+                ]
             ]
         )
         
@@ -51,38 +54,47 @@ struct QuotaDisplayMappingTests {
     
     @Test func testResetCreditsMapping() {
         let response = QuotaResponse(
-            schemaVersion: 1,
+            schemaVersion: 2,
             generatedAt: fixedNow,
             providers: [
                 // 有券：徽章顯示張數，到期清單依 JSON 原順序
-                "codex": ProviderQuota(
-                    provider: "codex",
-                    status: "ok",
-                    lastSuccessAt: fixedNow,
-                    windows: QuotaWindows(fiveHour: nil, sevenDay: nil),
-                    resetCredits: ResetCredits(
-                        availableCount: 2,
-                        credits: [
-                            ResetCredit(status: "available", grantedAt: fixedNow, expiresAt: fixedNow.addingTimeInterval(7200)),
-                            ResetCredit(status: "available", grantedAt: fixedNow, expiresAt: nil)
-                        ]
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex",
+                        account: "main",
+                        status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHour: nil, sevenDay: nil),
+                        resetCredits: ResetCredits(
+                            availableCount: 2,
+                            credits: [
+                                ResetCredit(status: "available", grantedAt: fixedNow, expiresAt: fixedNow.addingTimeInterval(7200)),
+                                ResetCredit(status: "available", grantedAt: fixedNow, expiresAt: nil)
+                            ]
+                        )
                     )
-                ),
+                ],
                 // 0 張：完全不顯示徽章
-                "claude": ProviderQuota(
-                    provider: "claude",
-                    status: "ok",
-                    lastSuccessAt: fixedNow,
-                    windows: QuotaWindows(fiveHour: nil, sevenDay: nil),
-                    resetCredits: ResetCredits(availableCount: 0, credits: [])
-                ),
+                "claude": [
+                    ProviderQuota(
+                        provider: "claude",
+                        account: "main",
+                        status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHour: nil, sevenDay: nil),
+                        resetCredits: ResetCredits(availableCount: 0, credits: [])
+                    )
+                ],
                 // 沒有 resetCredits 欄位的 Provider 不受影響
-                "agy": ProviderQuota(
-                    provider: "agy",
-                    status: "ok",
-                    lastSuccessAt: fixedNow,
-                    windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
-                )
+                "agy": [
+                    ProviderQuota(
+                        provider: "agy",
+                        account: "main",
+                        status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHour: nil, sevenDay: nil)
+                    )
+                ]
             ]
         )
         
@@ -99,18 +111,21 @@ struct QuotaDisplayMappingTests {
     
     @Test func testPercentClippingAndOptionalMapping() {
         let response = QuotaResponse(
-            schemaVersion: 1,
+            schemaVersion: 2,
             generatedAt: fixedNow.addingTimeInterval(-1000), // 16 分鐘前 (delayed)
             providers: [
-                "codex": ProviderQuota(
-                    provider: "codex",
-                    status: "rate_limited",
-                    lastSuccessAt: fixedNow.addingTimeInterval(-1200),
-                    windows: QuotaWindows(
-                        fiveHour: UsageWindow(remainingPercent: 120.0, resetsAt: nil), // 超過 100
-                        sevenDay: UsageWindow(remainingPercent: -10.0, resetsAt: nil)  // 低於 0
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex",
+                        account: "main",
+                        status: "rate_limited",
+                        lastSuccessAt: fixedNow.addingTimeInterval(-1200),
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 120.0, resetsAt: nil), // 超過 100
+                            sevenDay: UsageWindow(remainingPercent: -10.0, resetsAt: nil)  // 低於 0
+                        )
                     )
-                )
+                ]
             ]
         )
         
@@ -124,6 +139,49 @@ struct QuotaDisplayMappingTests {
         #expect(codex.sevenDay.remainingPercent == 0.0)   // 限制在 0
     }
     
+    /// 多帳號 provider 目前只映射預設帳號，維持固定三列的既有版面。
+    /// 多帳號版面定案後，這個測試要跟著改成「一列一帳號」。
+    @Test func testMultiAccountMapsPrimaryOnly() {
+        let response = QuotaResponse(
+            schemaVersion: 2,
+            generatedAt: fixedNow,
+            providers: [
+                "claude": [
+                    ProviderQuota(
+                        provider: "claude",
+                        account: "main",
+                        status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 61.0, resetsAt: nil),
+                            sevenDay: nil
+                        )
+                    ),
+                    ProviderQuota(
+                        provider: "claude",
+                        account: "work",
+                        status: "ok",
+                        lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(
+                            fiveHour: UsageWindow(remainingPercent: 34.0, resetsAt: nil),
+                            sevenDay: nil
+                        )
+                    )
+                ]
+            ]
+        )
+
+        let state = QuotaDisplayState.map(response: response, fetchedAt: fixedNow, now: fixedNow)
+
+        // 仍然是固定三列，claude 只有一列且取的是 main
+        #expect(state.providers.count == 3)
+        let claude = state.providers.first(where: { $0.id == "claude" })!
+        #expect(claude.fiveHour.remainingPercent == 61.0)
+
+        // 另一個帳號沒有被丟掉，只是還沒被顯示層用到
+        #expect(response.accounts(of: "claude").count == 2)
+    }
+
     @Test func testFreshnessPolicy() {
         // < 15 分鐘 -> fresh
         let freshDate = fixedNow.addingTimeInterval(-899)

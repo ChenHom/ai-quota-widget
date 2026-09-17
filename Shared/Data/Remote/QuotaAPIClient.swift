@@ -14,8 +14,8 @@ public protocol QuotaFetching: Sendable {
 /// 所有網路與解碼錯誤都轉換為型別化的 QuotaError。
 public struct QuotaAPIClient: QuotaFetching, Sendable {
     
-    /// 第一版支援的 schema versions。
-    public static let supportedSchemaVersions: Set<Int> = [1]
+    /// 目前支援的 schema versions。collector 自 2026-09-16 起只輸出 v2，v1 不再提供。
+    public static let supportedSchemaVersions: Set<Int> = [2]
     
     private let session: URLSession
     
@@ -53,23 +53,35 @@ public struct QuotaAPIClient: QuotaFetching, Sendable {
             throw QuotaError.httpStatus(httpResponse.statusCode)
         }
         
-        // 解碼 JSON
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .customISO8601
-        
-        let quotaResponse: QuotaResponse
+
+        // 先驗證 schema version，再做完整解碼。
+        // 順序不能反過來：跨版本連 `providers` 的形狀都會變（v1 是物件、v2 是陣列），
+        // 先完整解碼會讓「版本不符」表現成 .decoding（「資料解析失敗」），
+        // 蓋掉「請更新 App」這個真正能指引使用者的訊息。
+        let probe: SchemaProbe
         do {
-            quotaResponse = try decoder.decode(QuotaResponse.self, from: data)
+            probe = try decoder.decode(SchemaProbe.self, from: data)
         } catch {
             throw QuotaError.decoding(error)
         }
-        
-        // 驗證 schema version
-        guard Self.supportedSchemaVersions.contains(quotaResponse.schemaVersion) else {
-            throw QuotaError.unsupportedSchemaVersion(quotaResponse.schemaVersion)
+
+        guard Self.supportedSchemaVersions.contains(probe.schemaVersion) else {
+            throw QuotaError.unsupportedSchemaVersion(probe.schemaVersion)
         }
-        
-        return quotaResponse
+
+        // 解碼 JSON
+        do {
+            return try decoder.decode(QuotaResponse.self, from: data)
+        } catch {
+            throw QuotaError.decoding(error)
+        }
+    }
+
+    /// 只取 `schemaVersion` 的輕量型別，供版本檢查先行。
+    private struct SchemaProbe: Decodable {
+        let schemaVersion: Int
     }
     
     // MARK: - 錯誤分類
