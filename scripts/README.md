@@ -9,6 +9,11 @@
 `redeploy.sh` 若距離上次成功部署超過 5 天，就重新 build + 安裝一次，藉此重置這
 7 天信任窗；沒到門檻或手機沒接著都會安靜跳過，可以放心重複執行。
 
+腳本也會檢查 App 與 Widget extension 內嵌描述檔的到期時間。若描述檔已過期或 5 天內將
+過期，即使 `last-success` 很新也會重新部署；build 前會移除這兩個 App 專用的 Xcode 快取，
+並確認新產物的描述檔至少還有效 6 天，避免把「安裝成功」誤當成信任期限已重置。需要立即
+重裝時可加 `--force`，略過 5 天門檻。
+
 **原本設計是接上 USB 就透過 macOS Image Capture 的裝置 hook 自動觸發，但實測
 發現這台 Mac（macOS 26.5.2）上這個機制根本不會觸發**——`com.apple.imagecapture.plist`
 沒有寫入任何裝置 hook 設定、`com.apple.digihub.plist`（這功能的傳統設定檔）
@@ -44,7 +49,7 @@ LaunchAgent plist（`~/Library/LaunchAgents/com.hom.aiquota-redeploy-reminder.pl
 ## 使用方式
 
 手機接上 USB 後，雙擊 `~/Applications/AIQuota Redeploy.app`（或直接執行
-`scripts/redeploy.sh`）。跑完後檢查：
+`scripts/redeploy.sh`）。要略過 5 天門檻時執行 `scripts/redeploy.sh --force`。跑完後檢查：
 
 ```bash
 cat ~/Library/Logs/AIQuota-Redeploy/redeploy.log

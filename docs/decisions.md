@@ -1,9 +1,19 @@
 # AIQuota 決策與修正記錄
 
-最後更新：2026-09-17
+最後更新：2026-09-23
 相關文件：[產品規格](specification.md) · [實作規劃](implementation-plan.md) · [工作清單](tasks.md) · [部署自動化](../scripts/README.md)
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
+
+## 2026-09-23 修正：redeploy 安裝成功，但仍使用即將到期的簽章描述檔
+
+**現象**：9/22 重新部署 log 顯示 build 與 `devicectl install app` 成功；隔天點 Widget 仍跳出「AIQuota 無法再使用」。`last-success` 已更新，所以舊腳本在 5 天門檻內略過。
+
+**原因**：9/22 產物內的 App 描述檔（UUID `06359880-9341-4646-a80b-ecd995a6ad7b`）與 Widget extension 描述檔（UUID `c4282e37-3da9-4599-a103-e0ac87e16e89`）都是 9/15 16:38（台北時間）建立，並於 9/22 16:38 到期。當天 12:09 部署時只剩約 4.5 小時效期。Xcode build log 顯示仍從 `~/Library/Developer/Xcode/UserData/Provisioning Profiles` 取用這兩份快取，因此 build 與安裝雖成功，簽章信任期限並沒有重設。開發憑證本身效期到 2027-02-07，問題在 provisioning profile 到期，不是憑證到期。Apple 說明 Xcode 會重用本機仍符合需求的快取描述檔；移除指定快取後，Xcode 才會要求新的描述檔（[Apple Developer 說明](https://developer.apple.com/help/account/provisioning-profiles/edit-download-or-delete-profiles)）。
+
+**處理方式**：`scripts/redeploy.sh` 在時間門檻判斷前檢查 App 與 Widget 產物的描述檔效期；任何一份已到期或 5 天內將到期，就強制重新部署。Build 前只移除這兩份描述檔對應的 Xcode 快取，並在安裝前確認新產物的兩份描述檔至少還有效 6 天。新增 `--force` 供手動略過 5 天門檻。操作方式已補在 [`scripts/README.md`](../scripts/README.md)。
+
+**結果**：使用者回報問題已排除。此次根因由部署 log、快取描述檔 UUID 與內嵌 `ExpirationDate` 交叉確認；本機沒有再執行一次實機安裝驗證。
 
 ## 2026-09-17 修正：疊牌只沉不換 — `onTapGesture` 搭 `DragGesture` 的判斷是錯的
 
