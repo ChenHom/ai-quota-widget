@@ -91,7 +91,7 @@ build 時同時帶兩個設定，App 端（`AppConfiguration.buildLabel`）依�
 `MARKETING_VERSION` 不帶 `+` 後綴 — `CFBundleShortVersionString` 對特殊字元比較敏感。
 
 **直接在 Xcode 按 Run 不會帶任何一個**，此時顯示 `project.yml` 裡的 `MARKETING_VERSION`
-（目前是 `1.1`）。這是預期行為。
+（目前是 `2.0`）。這是預期行為。
 
 手動下指令時兩個都要帶：
 
