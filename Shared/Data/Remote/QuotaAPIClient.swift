@@ -14,8 +14,8 @@ public protocol QuotaFetching: Sendable {
 /// 所有網路與解碼錯誤都轉換為型別化的 QuotaError。
 public struct QuotaAPIClient: QuotaFetching, Sendable {
     
-    /// 目前支援的 schema versions。collector 自 2026-09-16 起只輸出 v2，v1 不再提供。
-    public static let supportedSchemaVersions: Set<Int> = [2]
+    /// 目前支援的 schema versions。collector 自 2026-11-02 起只輸出 v3，v2 以前不再提供。
+    public static let supportedSchemaVersions: Set<Int> = [3]
     
     private let session: URLSession
     
@@ -57,7 +57,7 @@ public struct QuotaAPIClient: QuotaFetching, Sendable {
         decoder.dateDecodingStrategy = .customISO8601
 
         // 先驗證 schema version，再做完整解碼。
-        // 順序不能反過來：跨版本連 `providers` 的形狀都會變（v1 是物件、v2 是陣列），
+        // 順序不能反過來：跨版本資料形狀都會變（v1→v2 的 `providers`、v2→v3 的 `windows`），
         // 先完整解碼會讓「版本不符」表現成 .decoding（「資料解析失敗」），
         // 蓋掉「請更新 App」這個真正能指引使用者的訊息。
         let probe: SchemaProbe

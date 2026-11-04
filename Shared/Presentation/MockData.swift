@@ -4,10 +4,10 @@ public enum MockData {
     public static var normalQuota: QuotaResponse {
         let now = Date()
         return QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: now.addingTimeInterval(-300), // 5 分鐘前
             providers: [
-                // 重置券目前只有 codex 會有值（見 collector 的 schema v2 文件）
+                // 重置券目前只有 codex 會有值（見 collector 的 schema 文件）
                 "codex": [
                     ProviderQuota(
                         provider: "codex",
@@ -56,9 +56,20 @@ public enum MockData {
                         account: "main",
                         status: "ok",
                         lastSuccessAt: now.addingTimeInterval(-340),
+                        // AGY 沒有 all：收合時看 Gemini，Dashboard 展開才看得到其他群組
                         windows: QuotaWindows(
-                            fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: now.addingTimeInterval(1800)),
-                            sevenDay: nil
+                            fiveHourGroups: [
+                                "gemini": UsageWindow(remainingPercent: 41.0, resetsAt: now.addingTimeInterval(1800)),
+                                "claude_gpt": UsageWindow(remainingPercent: 100.0, resetsAt: now.addingTimeInterval(14400),
+                                                          displayName: "Claude and GPT models"),
+                                "gemini_4_argon": nil
+                            ],
+                            sevenDayGroups: [
+                                "gemini": nil,
+                                "claude_gpt": UsageWindow(remainingPercent: 96.4, resetsAt: now.addingTimeInterval(86400 * 3),
+                                                          displayName: "Claude and GPT models"),
+                                "gemini_4_argon": nil
+                            ]
                         )
                     )
                 ]
@@ -69,7 +80,7 @@ public enum MockData {
     public static var delayedQuota: QuotaResponse {
         let now = Date()
         return QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: now.addingTimeInterval(-1800), // 30 分鐘前
             providers: [
                 "codex": [
@@ -104,7 +115,8 @@ public enum MockData {
                         lastSuccessAt: now.addingTimeInterval(-1900),
                         windows: QuotaWindows(
                             fiveHour: UsageWindow(remainingPercent: 12.0, resetsAt: now.addingTimeInterval(900)),
-                            sevenDay: nil
+                            sevenDay: nil,
+                            group: "gemini"
                         )
                     )
                 ]
@@ -115,7 +127,7 @@ public enum MockData {
     public static var staleQuota: QuotaResponse {
         let now = Date()
         return QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: now.addingTimeInterval(-7200), // 2 小時前
             providers: [
                 "codex": [
@@ -150,7 +162,8 @@ public enum MockData {
                         lastSuccessAt: now.addingTimeInterval(-7240),
                         windows: QuotaWindows(
                             fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: now.addingTimeInterval(1800)),
-                            sevenDay: nil
+                            sevenDay: nil,
+                            group: "gemini"
                         )
                     )
                 ]

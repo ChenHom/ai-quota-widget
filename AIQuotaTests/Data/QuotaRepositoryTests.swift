@@ -32,7 +32,7 @@ struct QuotaRepositoryTests {
     
     private func makeResponse() -> QuotaResponse {
         QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: Date(),
             providers: [
                 "codex": [
@@ -67,7 +67,7 @@ struct QuotaRepositoryTests {
         
         switch result {
         case .fresh(let cached):
-            #expect(cached.quota.schemaVersion == 2)
+            #expect(cached.quota.schemaVersion == 3)
             #expect(cached.quota.primaryAccount(of: "codex")?.status == "ok")
             // 快取也應寫入
             #expect(cache.load() != nil)
@@ -97,7 +97,7 @@ struct QuotaRepositoryTests {
         
         switch result {
         case .cached(let cached, let reason):
-            #expect(cached.quota.schemaVersion == 2)
+            #expect(cached.quota.schemaVersion == 3)
             if case .networkError(let error) = reason {
                 if case .httpStatus(let code) = error {
                     #expect(code == 500)

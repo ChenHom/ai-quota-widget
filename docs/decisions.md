@@ -1,9 +1,26 @@
 # AIQuota 決策與修正記錄
 
-最後更新：2026-09-23
+最後更新：2026-11-04
 相關文件：[產品規格](specification.md) · [實作規劃](implementation-plan.md) · [工作清單](tasks.md) · [部署自動化](../scripts/README.md)
 
 本文件記錄開發過程中的問題修正與技術決策，每筆包含背景、原因分析、處理方式與驗證結果。
+
+## 2026-11-04 決策：跟進 collector schema v3，AGY 平常看 Gemini、Dashboard 按壓展開所有群組
+
+**背景**：collector 自 2026-11-02 起只輸出 schema v3（見 [public-schema-v3.md](https://github.com/ChenHom/ai-quota/blob/main/docs/public-schema-v3.md)）。`windows.five_hour`／`seven_day` 底下多了一層額度群組：Codex／Claude 的帳號整體額度在 `all`，AGY 沒有 `all`，分成 `gemini`、`claude_gpt`、`gemini_4_argon`；沒有資料的群組明確為 null。
+
+**原因分析**：`supportedSchemaVersions` 是 `[2]`，v3 一律回報「資料格式版本不相容」，App 與 Widget 從 11-02 起只剩舊快取。就算放行版本，`UsageWindow` 也解不開 `{"all": {...}}`。
+
+**處理方式**：
+
+- `QuotaWindows` 改為「群組 key → `UsageWindow?`」。保留 `init(fiveHour:sevenDay:group:)` 簡寫（預設放進 `all`），測試與預覽資料大多只需要單一群組，不必全部改寫。
+- `ProviderQuota.primaryGroup`：Codex／Claude 取 `all`，AGY 取 `gemini`，與 macOS 端一致。`fiveHour()`／`sevenDay()` 不給群組時取主群組，群組不存在或為 null 都回 nil。
+- `ProviderDisplayState.fiveHour`／`sevenDay` 維持主群組，Widget 不用改；另外新增 `groups`，Dashboard 展開時用。群組標題以已知群組的短名優先（`Claude / GPT`），上游 `displayName` 偏長（`Claude and GPT models`）也不是每個群組都有。
+- Dashboard 單帳號且有多個群組的卡片（目前只有 AGY）啟用既有的按壓手勢，點擊改成展開／收合；多帳號卡片仍是換帳號。AGY 之後若出現第二個帳號，兩者會衝突，屆時再決定。
+- `supportedSchemaVersions` 改為 `[3]`。舊 v2 快取解不開時照既有設計當作無快取，第一次 refresh 即恢復。
+- 順手修正 `QuotaDisplayMappingTests` 既有的編譯錯誤：`allSatisfy(\.isDefaultAccount)` 在 `#expect` 巨集展開後被當成可能 throw 的呼叫，整個測試 target 編不過。改成 closure。
+
+**結果**：`xcodebuild test`（iPhone 17 模擬器，iOS 26.5）52 個測試全數通過，新增 v3 群組解碼（含快取 encode／decode 來回）與 AGY 群組對應、可展開判斷的案例。另以 `ImageRenderer` 輸出 AGY 卡片收合與展開的畫面確認版面。2026-11-04 以 `scripts/redeploy.sh --force` 部署到 iPhone（版號 `5796f8f`），使用者確認 Widget 顯示 AGY 的 Gemini、Dashboard 點 AGY 卡片展開與收合都正常。部署過程另修 `redeploy.sh` 兩處：全形括號前的變數改用 `${}`（`zh_TW.UTF-8` 下 bash 會把「）」吃進變數名稱，觸發 `set -u` 報錯）；描述檔到期時間改以 UTC 解讀（原本當本機時間，算出的到期時刻早 8 小時）。`AIQuotaTests/Fixtures/` 的 JSON 仍是 v2 形狀，但沒有任何測試讀取，這次未動。
 
 ## 2026-09-23 修正：redeploy 安裝成功，但仍使用即將到期的簽章描述檔
 

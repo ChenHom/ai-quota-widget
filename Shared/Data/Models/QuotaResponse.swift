@@ -1,7 +1,7 @@
 import Foundation
 
 public struct QuotaResponse: Codable, Sendable {
-    /// 預設帳號的固定標籤。schema v2 保證每個 provider 至少有一個帳號，且 `main` 排在最前。
+    /// 預設帳號的固定標籤。schema v2 起保證每個 provider 至少有一個帳號，且 `main` 排在最前。
     public static let defaultAccount = "main"
 
     public let schemaVersion: Int
@@ -85,29 +85,61 @@ public struct ResetCredit: Codable, Sendable {
     }
 }
 
+/// schema v3 起每個期間是「群組 key → 額度」。Codex／Claude 的帳號整體額度在 `all`；
+/// AGY 沒有 `all`，分成 `gemini`、`claude_gpt` 等群組。群組會動態增加，不寫死。
+/// 值為 nil 是上游尚無資料，不是剩餘 0%。
 public struct QuotaWindows: Codable, Sendable {
-    public let fiveHour: UsageWindow?
-    public let sevenDay: UsageWindow?
+    public let fiveHourGroups: [String: UsageWindow?]?
+    public let sevenDayGroups: [String: UsageWindow?]?
 
     enum CodingKeys: String, CodingKey {
-        case fiveHour = "five_hour"
-        case sevenDay = "seven_day"
+        case fiveHourGroups = "five_hour"
+        case sevenDayGroups = "seven_day"
     }
 
-    public init(fiveHour: UsageWindow?, sevenDay: UsageWindow?) {
-        self.fiveHour = fiveHour
-        self.sevenDay = sevenDay
+    public init(fiveHourGroups: [String: UsageWindow?]?, sevenDayGroups: [String: UsageWindow?]?) {
+        self.fiveHourGroups = fiveHourGroups
+        self.sevenDayGroups = sevenDayGroups
+    }
+
+    /// 只有一個群組時的簡寫，預設放在帳號整體的 `all`。測試與預覽資料大多只需要這種形狀
+    public init(fiveHour: UsageWindow?, sevenDay: UsageWindow?, group: String = "all") {
+        self.init(fiveHourGroups: [group: fiveHour], sevenDayGroups: [group: sevenDay])
     }
 }
 
-/// schema v2 的視窗另含 `usedPercent`，與 `remainingPercent` 互補，目前不解碼也不顯示。
+/// 視窗另含 `usedPercent`，與 `remainingPercent` 互補，目前不解碼也不顯示。
 public struct UsageWindow: Codable, Sendable {
     public let remainingPercent: Double
     public let resetsAt: Date?
+    /// 上游有提供才有，例如 "Claude and GPT models"
+    public let displayName: String?
 
-    public init(remainingPercent: Double, resetsAt: Date?) {
+    public init(remainingPercent: Double, resetsAt: Date?, displayName: String? = nil) {
         self.remainingPercent = remainingPercent
         self.resetsAt = resetsAt
+        self.displayName = displayName
+    }
+}
+
+public extension ProviderQuota {
+    /// 卡片收合時與 Widget 看的群組：Codex／Claude 是帳號整體的 `all`；
+    /// AGY 沒有 `all`，平常看 Gemini。與 macOS 端一致
+    var primaryGroup: String { provider == "agy" ? "gemini" : "all" }
+
+    /// 展開時列出的群組：兩個期間的聯集，`primaryGroup` 在最前，其餘依 key 排序
+    var groups: [String] {
+        let keys = Set((windows.fiveHourGroups ?? [:]).keys).union((windows.sevenDayGroups ?? [:]).keys)
+        return [primaryGroup] + keys.subtracting([primaryGroup]).sorted()
+    }
+
+    /// 不給群組就取 `primaryGroup`。群組不存在或為 null 都回 nil，畫面顯示「—」
+    func fiveHour(_ group: String? = nil) -> UsageWindow? {
+        windows.fiveHourGroups?[group ?? primaryGroup] ?? nil
+    }
+
+    func sevenDay(_ group: String? = nil) -> UsageWindow? {
+        windows.sevenDayGroups?[group ?? primaryGroup] ?? nil
     }
 }
 

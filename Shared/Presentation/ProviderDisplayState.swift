@@ -70,6 +70,14 @@ public struct WindowDisplayState: Sendable, Equatable {
     }
 }
 
+/// 一個額度群組的 5h／7d。Dashboard 的 AGY 卡片展開時逐一列出
+public struct GroupDisplayState: Sendable, Equatable, Identifiable {
+    public let id: String // 群組 key，例如 "gemini"、"claude_gpt"
+    public let title: String // "Gemini"、"Claude / GPT"
+    public let fiveHour: WindowDisplayState
+    public let sevenDay: WindowDisplayState
+}
+
 /// 重置券只做摘要：名稱旁一個 `+N` 徽章，點開才列出各張券的到期時間。
 /// 逐筆攤開會讓卡片高度隨券數浮動，違背固定版面。
 public struct ResetCreditsDisplayState: Sendable, Equatable {
@@ -110,9 +118,13 @@ public struct ProviderDisplayState: Sendable, Identifiable, Equatable {
     public let accountCount: Int
     public let status: ProviderStatus
     public let lastSuccessAt: Date?
+    /// `fiveHour`／`sevenDay` 是主群組（Codex／Claude 的 `all`、AGY 的 `gemini`），
+    /// 卡片收合時與 Widget 只看這兩個
     public let fiveHour: WindowDisplayState
     public let sevenDay: WindowDisplayState
     public let resetCredits: ResetCreditsDisplayState?
+    /// 所有群組，主群組在最前。只有一個群組時卡片不能展開
+    public let groups: [GroupDisplayState]
 
     public init(
         providerID: String,
@@ -124,7 +136,8 @@ public struct ProviderDisplayState: Sendable, Identifiable, Equatable {
         lastSuccessAt: Date?,
         fiveHour: WindowDisplayState,
         sevenDay: WindowDisplayState,
-        resetCredits: ResetCreditsDisplayState? = nil
+        resetCredits: ResetCreditsDisplayState? = nil,
+        groups: [GroupDisplayState] = []
     ) {
         self.id = "\(providerID)/\(account)"
         self.providerID = providerID
@@ -137,6 +150,7 @@ public struct ProviderDisplayState: Sendable, Identifiable, Equatable {
         self.fiveHour = fiveHour
         self.sevenDay = sevenDay
         self.resetCredits = resetCredits
+        self.groups = groups
     }
 
     /// 是否為預設帳號。Widget 目前只顯示預設帳號，維持固定三列版面。
@@ -184,6 +198,13 @@ public struct ProviderStackDisplayState: Sendable, Identifiable, Equatable {
     }
     
     public var isMultiAccount: Bool { accounts.count > 1 }
+
+    /// 按一下展開所有群組。目前只有 AGY 會成立。
+    /// ponytail: 多帳號的按壓已經拿來換帳號，展開只給單帳號；
+    /// AGY 出現第二個帳號時，要另外決定展開怎麼觸發
+    public var isExpandable: Bool {
+        !isMultiAccount && (accounts.first?.groups.count ?? 0) > 1
+    }
     
     /// 以 `frontAccount` 為首的循環排列。
     /// 帳號不存在（快照換過、該帳號已移除）時退回原順序，也就是 `main` 在最前。

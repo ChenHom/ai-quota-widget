@@ -80,12 +80,12 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 
 ### 5.1 JSON 範例
 
-對應 collector 端 schema v2（2026-09-16 起伺服器只輸出 v2，v1 不再提供）。
-`providers` 底下每個 Provider 是「一帳號一元素」的陣列。
+對應 collector 端 schema v3（2026-11-02 起伺服器只輸出 v3，v2 以前不再提供）。
+`providers` 底下每個 Provider 是「一帳號一元素」的陣列；`windows` 的每個期間底下再分額度群組。
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "generatedAt": "2026-09-16T02:56:34.538Z",
   "providers": {
     "codex": [
@@ -98,14 +98,10 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
         "lastSuccessAt": "2026-09-16T02:56:34.538Z",
         "windows": {
           "five_hour": {
-            "usedPercent": 17.6,
-            "remainingPercent": 82.4,
-            "resetsAt": "2026-09-16T07:30:11.000Z"
+            "all": { "usedPercent": 17.6, "remainingPercent": 82.4, "resetsAt": "2026-09-16T07:30:11.000Z" }
           },
           "seven_day": {
-            "usedPercent": 46.0,
-            "remainingPercent": 54.0,
-            "resetsAt": null
+            "all": { "usedPercent": 46.0, "remainingPercent": 54.0, "resetsAt": null }
           }
         },
         "resetCredits": {
@@ -124,6 +120,24 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
     "claude": [
       { "provider": "claude", "account": "main", "status": "ok", "...": "..." },
       { "provider": "claude", "account": "work", "status": "ok", "...": "..." }
+    ],
+    "agy": [
+      {
+        "provider": "agy", "account": "main", "status": "ok", "...": "...",
+        "windows": {
+          "five_hour": {
+            "gemini": { "usedPercent": 15.7, "remainingPercent": 84.3, "resetsAt": "2026-11-04T04:56:02.000Z" },
+            "claude_gpt": null,
+            "gemini_4_argon": null
+          },
+          "seven_day": {
+            "gemini": null,
+            "claude_gpt": { "usedPercent": 100, "remainingPercent": 0, "resetsAt": "2026-11-07T13:02:10.000Z",
+                            "displayName": "Claude and GPT models" },
+            "gemini_4_argon": null
+          }
+        }
+      }
     ]
   }
 }
@@ -133,7 +147,7 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 
 | 欄位 | 型別 | 必要 | 規則 |
 |---|---|---:|---|
-| `schemaVersion` | Integer | 是 | 只接受 `2`；其餘一律視為不可用 |
+| `schemaVersion` | Integer | 是 | 只接受 `3`；其餘一律視為不可用 |
 | `generatedAt` | ISO 8601 Date | 是 | 支援有／無小數秒 |
 | `providers` | Object | 是 | key 為 Provider 識別字，value 為帳號陣列 |
 | `providers.<key>` | Array | 是 | 至少 1 個元素；`agy` 可能整個缺席 |
@@ -143,8 +157,10 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 | `confidence` | String | 否 | 目前不解碼、不顯示 |
 | `source` | String | 否 | 上游端點；目前不解碼、不顯示 |
 | `lastSuccessAt` | ISO 8601 Date 或 null | 是 | Provider 最後成功時間；null 不可造成解碼失敗 |
-| `five_hour` | Object 或 null | 是 | 缺值不可轉成 0% |
-| `seven_day` | Object 或 null | 是 | 缺值不可轉成 0%；agy 恆為 null |
+| `five_hour` | Object | 是 | 群組 key → 額度物件或 null；群組會動態增加，不可寫死 |
+| `seven_day` | Object | 是 | 同上 |
+| 群組值 | Object 或 null | 是 | null 是尚無資料，不可轉成 0%；`remainingPercent: 0` 才是用完 |
+| `displayName` | String | 否 | 上游有提供才有；顯示以已知群組短名優先，未知群組才用它 |
 | `usedPercent` | Double | 否 | 與 `remainingPercent` 互補；目前不解碼、不顯示 |
 | `remainingPercent` | Double | 是 | 顯示時限制於 0–100；保留原始值供診斷 |
 | `resetsAt` | ISO 8601 Date 或 null | 是 | null 顯示為 `—` 或省略 |
@@ -160,6 +176,13 @@ AIQuota 是只讀型額度檢視工具。它從使用者設定的 HTTPS endpoint
 - App Dashboard 一個 Provider 一落牌，同一個 Provider 內沿用伺服器順序。
 - Widget 只取預設帳號：先找 `account == "main"`，找不到才退回第一個元素。
 - 顯示層的列 id 必須是 `provider/account` 複合鍵；多列共用同一個 id 會讓 `ForEach` 的 `Identifiable` 撞號。
+
+### 5.2.2 群組選取
+
+- 主群組：Codex／Claude 是帳號整體的 `all`；AGY 沒有 `all`，用 `gemini`。與 macOS 端一致。
+- Widget 與卡片收合時只顯示主群組的 5h／7d。
+- App Dashboard 的單帳號卡片若有多個群組（目前只有 AGY），按壓卡片展開所有群組（主群組在前、其餘依 key 排序，每段一組 5h／7d），再按一次收合。多帳號卡片的按壓用來換帳號，不展開。
+- 群組與 `all` 的限制可能重疊，不可相加。
 
 ### 5.3 Provider 順序
 

@@ -120,7 +120,8 @@ struct DashboardView: View {
 // MARK: - Provider Stack Card
 
 /// 多帳號 provider 疊成一落牌：按下去整落沉到同一個位置，放開彈回時已經換成下一個帳號。
-/// 交換就藏在收斂到同一個位置的那一刻，這是整個做法的關鍵。單帳號時退化成一張普通卡片。
+/// 交換就藏在收斂到同一個位置的那一刻，這是整個做法的關鍵。單帳號時退化成一張普通卡片；
+/// 若帳號有多個額度群組（目前只有 AGY），按一下改成展開／收合所有群組。
 struct ProviderStackCardView: View {
     let stack: ProviderStackDisplayState
 
@@ -130,6 +131,8 @@ struct ProviderStackCardView: View {
     @State private var isPressing = false
     /// 按下去的時刻，用來算還要不要補足 pressDuration
     @State private var pressStartedAt: Date?
+    /// 單帳號卡片展開成所有群組
+    @State private var isExpanded = false
 
     /// 後面那張往下露出的高度
     private static let peek: CGFloat = 9
@@ -150,7 +153,7 @@ struct ProviderStackCardView: View {
             .contentShape(Rectangle())
             .modifier(
                 StackPressGestures(
-                    enabled: stack.isMultiAccount,
+                    enabled: stack.isMultiAccount || stack.isExpandable,
                     onChanged: dragChanged,
                     onEnded: dragEnded
                 )
@@ -159,6 +162,13 @@ struct ProviderStackCardView: View {
             .accessibilityActions {
                 if stack.isMultiAccount {
                     Button("切換下一個帳號") { switchAccountDirectly() }
+                }
+                if stack.isExpandable {
+                    Button(isExpanded ? "收合模型額度" : "顯示所有模型額度") {
+                        withAnimation(.spring(response: 0.40, dampingFraction: 0.60)) {
+                            isExpanded.toggle()
+                        }
+                    }
                 }
             }
     }
@@ -177,7 +187,8 @@ struct ProviderStackCardView: View {
                     activeIndex: activeIndex,
                     // 疊在後面的卡片不該吃到點擊：重置券徽章是個 Button，
                     // 蓋在下面仍會搶走最前面那張的觸控
-                    isInteractive: depth == 0
+                    isInteractive: depth == 0,
+                    isExpanded: isExpanded && stack.isExpandable
                 )
                 .offset(y: level * Self.peek)
                 .scaleEffect(1 - level * Self.shrink)
@@ -207,28 +218,34 @@ struct ProviderStackCardView: View {
         withAnimation(.easeIn(duration: Self.pressDuration)) { isPressing = true }
     }
 
-    /// 手指離開：彈回來。位移夠小才算點擊，才換帳號
+    /// 手指離開：彈回來。位移夠小才算點擊，才換帳號或展開
     private func dragEnded(_ value: DragGesture.Value) {
         guard isPressing else { return }
-        let next = moved(value) <= Self.tapSlop ? stack.account(after: frontAccount) : nil
+        let isTap = moved(value) <= Self.tapSlop
+        let next = isTap ? stack.account(after: frontAccount) : nil
+        let toggleExpand = isTap && next == nil && stack.isExpandable
 
         // 點得太快時沉下去還沒走完，先補足剩下的時間。
         // 沒補的話兩張卡還沒收斂到同一個位置就交換，會被看見
         let elapsed = pressStartedAt.map { Date.now.timeIntervalSince($0) } ?? Self.pressDuration
         let remaining = Self.pressDuration - elapsed
-        guard remaining > 0 else { return settle(next: next) }
+        guard remaining > 0 else { return settle(next: next, toggleExpand: toggleExpand) }
 
         // next 先算好帶進 closure，不在 closure 裡讀 @State
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(remaining))
-            settle(next: next)
+            settle(next: next, toggleExpand: toggleExpand)
         }
     }
 
-    private func settle(next: String?) {
+    private func settle(next: String?, toggleExpand: Bool = false) {
         // 阻尼壓低才彈得出來
         withAnimation(.spring(response: 0.40, dampingFraction: 0.60)) {
-            if let next { frontAccount = next }
+            if let next {
+                frontAccount = next
+            } else if toggleExpand {
+                isExpanded.toggle()
+            }
             isPressing = false
         }
         pressStartedAt = nil
@@ -291,6 +308,8 @@ struct ProviderCardView: View {
     var activeIndex: Int = 0
     /// 疊在後面的卡片設為 false，避免蓋住最前面那張的觸控
     var isInteractive: Bool = true
+    /// 展開時逐一列出所有群組，收合時只看主群組
+    var isExpanded: Bool = false
 
     @State private var showingResetCredits = false
 
@@ -328,8 +347,21 @@ struct ProviderCardView: View {
                 statusBadge(provider.status)
             }
 
-            UsageRowView(label: "5h", window: provider.fiveHour)
-            UsageRowView(label: "7d", window: provider.sevenDay)
+            if isExpanded {
+                // 每個群組一段：名稱在上、5h／7d 在下。null 的群組也列出來，顯示「—」
+                ForEach(provider.groups) { group in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(group.title)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        UsageRowView(label: "5h", window: group.fiveHour)
+                        UsageRowView(label: "7d", window: group.sevenDay)
+                    }
+                }
+            } else {
+                UsageRowView(label: "5h", window: provider.fiveHour)
+                UsageRowView(label: "7d", window: provider.sevenDay)
+            }
         }
         .padding(12)
         .background(cardBackground)

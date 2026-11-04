@@ -16,7 +16,7 @@ struct QuotaCacheTests {
     
     private func makeSampleCached() -> CachedQuota {
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: Date(),
             providers: [
                 "codex": [
@@ -46,7 +46,7 @@ struct QuotaCacheTests {
         
         let loaded = cache.load()
         #expect(loaded != nil)
-        #expect(loaded?.quota.schemaVersion == 2)
+        #expect(loaded?.quota.schemaVersion == 3)
         #expect(loaded?.quota.primaryAccount(of: "codex")?.status == "ok")
     }
 
@@ -57,7 +57,7 @@ struct QuotaCacheTests {
         let cache = makeCache(containerURL: dir)
 
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: Date(),
             providers: [
                 "claude": [
@@ -86,7 +86,7 @@ struct QuotaCacheTests {
         let accounts = loaded?.quota.accounts(of: "claude") ?? []
         #expect(accounts.map(\.account) == ["main", "work"])
         #expect(accounts.last?.lastSuccessAt == nil)
-        #expect(accounts.last?.windows.fiveHour?.remainingPercent == 34)
+        #expect(accounts.last?.fiveHour()?.remainingPercent == 34)
     }
     
     @Test func testLoadReturnsNilWhenEmpty() {

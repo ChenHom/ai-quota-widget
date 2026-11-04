@@ -5,11 +5,12 @@ import Foundation
 struct APIClientErrorTests {
 
     @Test func testSchemaVersionValidation() {
-        // 支援的版本：collector 自 2026-09-16 起只輸出 v2
-        #expect(QuotaAPIClient.supportedSchemaVersions.contains(2))
+        // 支援的版本：collector 自 2026-11-02 起只輸出 v3
+        #expect(QuotaAPIClient.supportedSchemaVersions.contains(3))
         // 不支援的版本
         #expect(!QuotaAPIClient.supportedSchemaVersions.contains(0))
         #expect(!QuotaAPIClient.supportedSchemaVersions.contains(1))
+        #expect(!QuotaAPIClient.supportedSchemaVersions.contains(2))
         #expect(!QuotaAPIClient.supportedSchemaVersions.contains(99))
     }
 
@@ -56,7 +57,7 @@ struct APIClientErrorTests {
     @Test func testDecodingNullWindows() throws {
         let json = """
         {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "generatedAt": "2026-07-16T09:30:00Z",
             "providers": {
                 "codex": [
@@ -80,14 +81,14 @@ struct APIClientErrorTests {
 
         let response = try decoder.decode(QuotaResponse.self, from: json)
         let codex = response.primaryAccount(of: "codex")!
-        #expect(codex.windows.fiveHour == nil)
-        #expect(codex.windows.sevenDay == nil)
+        #expect(codex.fiveHour() == nil)
+        #expect(codex.sevenDay() == nil)
     }
 
     @Test func testDecodingUnknownStatusDoesNotFail() throws {
         let json = """
         {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "generatedAt": "2026-07-16T09:30:00Z",
             "providers": {
                 "codex": [
@@ -97,10 +98,10 @@ struct APIClientErrorTests {
                         "status": "some_unknown_status_value",
                         "lastSuccessAt": "2026-07-16T09:29:30Z",
                         "windows": {
-                            "five_hour": {
+                            "five_hour": { "all": {
                                 "remainingPercent": 50.0,
                                 "resetsAt": null
-                            },
+                            } },
                             "seven_day": null
                         }
                     }
@@ -138,7 +139,7 @@ struct APIClientErrorTests {
     @Test func testDecodingProviderFixedOrder() {
         let now = Date()
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: now,
             providers: [
                 "agy": [
@@ -229,12 +230,12 @@ struct APIClientSchemaOrderTests {
         }
     }
 
-    /// v2 payload 走完整條路徑：HTTP → 版本檢查 → 解碼，多帳號完整保留。
+    /// v3 payload 走完整條路徑：HTTP → 版本檢查 → 解碼，多帳號完整保留。
     @Test func testSupportedVersionDecodesAllAccounts() async throws {
         StubURLProtocol.statusCode = 200
         StubURLProtocol.responseData = """
         {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "generatedAt": "2026-07-16T09:30:00Z",
             "providers": {
                 "claude": [
@@ -246,7 +247,7 @@ struct APIClientSchemaOrderTests {
                         "source": "api.anthropic.com/api/oauth/usage",
                         "lastSuccessAt": "2026-07-16T09:29:45Z",
                         "windows": {
-                            "five_hour": { "usedPercent": 39, "remainingPercent": 61, "resetsAt": null },
+                            "five_hour": { "all": { "usedPercent": 39, "remainingPercent": 61, "resetsAt": null } },
                             "seven_day": null
                         },
                         "resetCredits": null
@@ -259,7 +260,7 @@ struct APIClientSchemaOrderTests {
                         "source": "api.anthropic.com/api/oauth/usage",
                         "lastSuccessAt": null,
                         "windows": {
-                            "five_hour": { "usedPercent": 66, "remainingPercent": 34, "resetsAt": null },
+                            "five_hour": { "all": { "usedPercent": 66, "remainingPercent": 34, "resetsAt": null } },
                             "seven_day": null
                         },
                         "resetCredits": null
@@ -271,9 +272,9 @@ struct APIClientSchemaOrderTests {
 
         let response = try await makeClient().fetchQuota(from: endpoint)
 
-        #expect(response.schemaVersion == 2)
+        #expect(response.schemaVersion == 3)
         #expect(response.accounts(of: "claude").map(\.account) == ["main", "work"])
-        #expect(response.primaryAccount(of: "claude")?.windows.fiveHour?.remainingPercent == 61)
+        #expect(response.primaryAccount(of: "claude")?.fiveHour()?.remainingPercent == 61)
         #expect(response.accounts(of: "claude")[1].lastSuccessAt == nil)
     }
 }

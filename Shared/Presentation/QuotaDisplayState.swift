@@ -124,9 +124,10 @@ public extension QuotaDisplayState {
                     accountCount: accounts.count,
                     status: status,
                     lastSuccessAt: providerData.lastSuccessAt,
-                    fiveHour: mapWindow(providerData.windows.fiveHour),
-                    sevenDay: mapWindow(providerData.windows.sevenDay),
-                    resetCredits: mapResetCredits(providerData.resetCredits)
+                    fiveHour: mapWindow(providerData.fiveHour()),
+                    sevenDay: mapWindow(providerData.sevenDay()),
+                    resetCredits: mapResetCredits(providerData.resetCredits),
+                    groups: providerData.groups.map { mapGroup($0, of: providerData) }
                 )
             }
         }
@@ -147,6 +148,23 @@ public extension QuotaDisplayState {
         )
     }
     
+    /// 上游的 displayName 偏長，也不是每個群組都有，已知群組改用短名。與 macOS 端一致
+    private static let groupTitles = [
+        "all": "整體", "opus": "Opus", "sonnet": "Sonnet",
+        "gemini": "Gemini", "claude_gpt": "Claude / GPT", "gemini_4_argon": "Gemini 4 Argon",
+    ]
+
+    private static func mapGroup(_ key: String, of quota: ProviderQuota) -> GroupDisplayState {
+        let fiveHour = quota.fiveHour(key)
+        let sevenDay = quota.sevenDay(key)
+        return GroupDisplayState(
+            id: key,
+            title: groupTitles[key] ?? (fiveHour ?? sevenDay)?.displayName ?? key,
+            fiveHour: mapWindow(fiveHour),
+            sevenDay: mapWindow(sevenDay)
+        )
+    }
+
     private static func mapWindow(_ window: UsageWindow?) -> WindowDisplayState {
         guard let window = window else {
             return WindowDisplayState(remainingPercent: nil, resetsAt: nil)

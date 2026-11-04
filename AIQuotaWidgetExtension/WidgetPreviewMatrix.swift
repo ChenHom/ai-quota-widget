@@ -22,7 +22,7 @@ import WidgetKit
     {
         let now = Date()
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: now.addingTimeInterval(-300),
             providers: [
                 "codex": [
@@ -48,7 +48,8 @@ import WidgetKit
                         lastSuccessAt: now.addingTimeInterval(-340),
                         windows: QuotaWindows(
                             fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: now.addingTimeInterval(1800)),
-                            sevenDay: nil
+                            sevenDay: nil,
+                            group: "gemini"
                         )
                     )
                 ]
@@ -67,7 +68,7 @@ import WidgetKit
     {
         let now = Date()
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: now.addingTimeInterval(-300),
             providers: [
                 "codex": [
@@ -86,7 +87,8 @@ import WidgetKit
                         lastSuccessAt: now.addingTimeInterval(-340),
                         windows: QuotaWindows(
                             fiveHour: UsageWindow(remainingPercent: 41.0, resetsAt: nil),
-                            sevenDay: nil
+                            sevenDay: nil,
+                            group: "gemini"
                         )
                     )
                 ]
@@ -129,7 +131,7 @@ import WidgetKit
     {
         let now = Date()
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: now.addingTimeInterval(-300),
             providers: [
                 "codex": [
@@ -158,7 +160,8 @@ import WidgetKit
                         lastSuccessAt: now.addingTimeInterval(-3600),
                         windows: QuotaWindows(
                             fiveHour: UsageWindow(remainingPercent: 15.0, resetsAt: nil),
-                            sevenDay: nil
+                            sevenDay: nil,
+                            group: "gemini"
                         )
                     )
                 ]

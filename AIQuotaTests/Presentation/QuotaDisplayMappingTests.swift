@@ -13,7 +13,7 @@ struct QuotaDisplayMappingTests {
     
     @Test func testNormalMapping() {
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: fixedNow.addingTimeInterval(-300), // 5 分鐘前 (fresh)
             providers: [
                 "codex": [
@@ -54,7 +54,7 @@ struct QuotaDisplayMappingTests {
     
     @Test func testResetCreditsMapping() {
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: fixedNow,
             providers: [
                 // 有券：徽章顯示張數，到期清單依 JSON 原順序
@@ -111,7 +111,7 @@ struct QuotaDisplayMappingTests {
     
     @Test func testPercentClippingAndOptionalMapping() {
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: fixedNow.addingTimeInterval(-1000), // 16 分鐘前 (delayed)
             providers: [
                 "codex": [
@@ -142,7 +142,7 @@ struct QuotaDisplayMappingTests {
     /// 一個帳號一列：Dashboard 顯示所有帳號，provider 之間維持固定順序。
     @Test func testMultiAccountMapsOneRowPerAccount() {
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: fixedNow,
             providers: [
                 "claude": [
@@ -195,7 +195,7 @@ struct QuotaDisplayMappingTests {
     /// Dashboard 的疊牌：一個 provider 一落，provider 順序不變。
     @Test func testProviderStacksGrouping() {
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: fixedNow,
             providers: [
                 "claude": [
@@ -294,7 +294,7 @@ struct QuotaDisplayMappingTests {
     /// 單帳號 provider 不顯示帳號標籤，外觀與 schema v1 時相同。
     @Test func testSingleAccountHasNoAccountLabel() {
         let response = QuotaResponse(
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: fixedNow,
             providers: [
                 "codex": [
@@ -323,8 +323,66 @@ struct QuotaDisplayMappingTests {
 
         #expect(state.providers.count == 3)
         #expect(state.providers.allSatisfy { $0.status == .noData })
-        #expect(state.providers.allSatisfy(\.isDefaultAccount))
+        #expect(state.providers.allSatisfy { $0.isDefaultAccount })
         #expect(state.defaultAccountProviders.count == 3)
+    }
+
+    /// AGY 收合時與 Widget 看 Gemini，展開列出所有群組；只有單帳號又有多個群組的牌能展開。
+    @Test func testAGYGroupsMapping() {
+        let response = QuotaResponse(
+            schemaVersion: 3,
+            generatedAt: fixedNow,
+            providers: [
+                "codex": [
+                    ProviderQuota(
+                        provider: "codex", account: "main", status: "ok", lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHour: UsageWindow(remainingPercent: 82, resetsAt: nil), sevenDay: nil)
+                    )
+                ],
+                "claude": [
+                    ProviderQuota(
+                        provider: "claude", account: "main", status: "ok", lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHourGroups: ["all": nil, "opus": nil], sevenDayGroups: nil)
+                    ),
+                    ProviderQuota(
+                        provider: "claude", account: "work", status: "ok", lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(fiveHourGroups: ["all": nil, "opus": nil], sevenDayGroups: nil)
+                    )
+                ],
+                "agy": [
+                    ProviderQuota(
+                        provider: "agy", account: "main", status: "ok", lastSuccessAt: fixedNow,
+                        windows: QuotaWindows(
+                            fiveHourGroups: [
+                                "gemini": UsageWindow(remainingPercent: 84.3, resetsAt: nil),
+                                "claude_gpt": nil,
+                                "new_group": UsageWindow(remainingPercent: 50, resetsAt: nil, displayName: "New models")
+                            ],
+                            sevenDayGroups: [
+                                "gemini": nil,
+                                "claude_gpt": UsageWindow(remainingPercent: 0, resetsAt: nil)
+                            ]
+                        )
+                    )
+                ]
+            ]
+        )
+
+        let state = QuotaDisplayState.map(response: response, fetchedAt: fixedNow, now: fixedNow)
+        let agy = state.providers.first { $0.providerID == "agy" }!
+
+        #expect(agy.fiveHour.percentText == "84%")
+        #expect(agy.sevenDay.percentText == "—")
+        #expect(agy.groups.map(\.id) == ["gemini", "claude_gpt", "new_group"])
+        // 已知群組用短名，未知群組退回 displayName
+        #expect(agy.groups.map(\.title) == ["Gemini", "Claude / GPT", "New models"])
+        #expect(agy.groups[1].fiveHour.percentText == "—")
+        #expect(agy.groups[1].sevenDay.percentText == "0%")
+
+        let stacks = Dictionary(uniqueKeysWithValues: state.providerStacks.map { ($0.id, $0) })
+        #expect(stacks["agy"]?.isExpandable == true)
+        #expect(stacks["codex"]?.isExpandable == false)   // 只有 all 一個群組
+        #expect(stacks["claude"]?.isExpandable == false)  // 多帳號，按壓是換帳號
     }
 
     @Test func testFreshnessPolicy() {
