@@ -61,7 +61,7 @@ read_profile_metadata() {
     }
     /bin/rm -f "$payload_file"
 
-    expiration_epoch=$(/bin/date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expiration_date" "+%s" 2>/dev/null) || return 1
+    expiration_epoch=$(TZ=UTC /bin/date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expiration_date" "+%s" 2>/dev/null) || return 1
     printf '%s %s\n' "$profile_uuid" "$expiration_epoch"
 }
 
@@ -175,7 +175,7 @@ build_status=$?
 echo "$build_output" >> "$LOG_FILE"
 
 if [ "$build_status" -ne 0 ] || [ ! -d "$APP_PATH" ]; then
-    log "Build 失敗（exit $build_status）"
+    log "Build 失敗（exit ${build_status}）"
     notify "Build 失敗，請打開 Xcode 檢查簽章／專案設定"
     exit 1
 fi
@@ -191,7 +191,7 @@ install_status=$?
 echo "$install_output" >> "$LOG_FILE"
 
 if [ "$install_status" -ne 0 ]; then
-    log "安裝失敗（exit $install_status），不通知（wired 情境使用者應該就在電腦前）"
+    log "安裝失敗（exit ${install_status}），不通知（wired 情境使用者應該就在電腦前）"
     exit 1
 fi
 
